@@ -1,0 +1,4438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Cartogram — Custom Map Maker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function () {
+      try {
+        void window.parent.location.href;
+      } catch (e) {
+        var fallbackHref = (window.location && window.location.origin && window.location.origin !== 'null')
+          ? window.location.origin + '/'
+          : 'https://localhost/';
+        var safeParent = new Proxy(window, {
+          get: function (target, prop) {
+            if (prop === 'location') {
+              return {
+                href: fallbackHref,
+                origin: fallbackHref.replace(/\/$/, ''),
+                protocol: 'https:',
+                host: window.location.host || 'localhost',
+                hostname: window.location.hostname || 'localhost',
+                pathname: '/',
+                search: '',
+                hash: '',
+                toString: function () { return fallbackHref; }
+              };
+            }
+            if (prop === 'parent' || prop === 'top') {
+              return safeParent;
+            }
+            var val = Reflect.get(target, prop);
+            return typeof val === 'function' ? val.bind(target) : val;
+          }
+        });
+        try {
+          Object.defineProperty(window, 'parent', {
+            get: function () { return safeParent; },
+            configurable: true
+          });
+        } catch (err) {}
+      }
+    })();
+  </script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            serif: ['"Fraunces"', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background-color: #f3f4f6;
+      color: #111827;
+      overscroll-behavior: none;
+      user-select: none;
+    }
+    .thin-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .thin-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .thin-scroll::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 9999px;
+    }
+    .thin-scroll::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #2563eb;
+      margin-top: -5px;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      transition: transform 0.12s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+    }
+    input[type="color"] {
+      -webkit-appearance: none;
+      appearance: none;
+      border: none;
+      padding: 0;
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      cursor: pointer;
+      background: transparent;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+    input[type="color"]::-webkit-color-swatch {
+      border: 1px solid rgba(17, 24, 39, 0.16);
+      border-radius: 7px;
+    }
+    .workspace-dots {
+      background-color: #eef0f4;
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .poster-card-shadow {
+      box-shadow: 0 20px 50px -12px rgba(15, 23, 42, 0.18), 0 0 1px 1px rgba(15, 23, 42, 0.06);
+    }
+    .maplibregl-ctrl-attrib,
+    .maplibregl-ctrl-logo {
+      display: none !important;
+    }
+    .custom-pin-marker {
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    .custom-pin-marker:hover {
+      transform: scale(1.08);
+    }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col bg-[#f3f4f6] text-[#111827]">
+
+  <header class="h-14 bg-white border-b border-gray-200 px-3 sm:px-5 flex items-center justify-between gap-3 z-30 shrink-0">
+    <div class="flex items-center gap-4">
+      <span class="text-xl font-bold tracking-tight text-gray-900">Cartogram</span>
+      <div class="hidden xl:flex items-center gap-1 pl-3 border-l border-gray-200">
+        <button onclick="flyToPresetCity('Toronto', 43.6532, -79.3832, 13.2, 'Ontario, Canada')" class="px-2.5 py-1 rounded-full text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Toronto</button>
+        <button onclick="flyToPresetCity('Lake District', 54.4609, -3.0886, 12.2, 'Cumbria, United Kingdom')" class="px-2.5 py-1 rounded-full text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Lake District</button>
+        <button onclick="flyToPresetCity('Edinburgh', 55.9533, -3.1883, 13.2, 'Midlothian, Scotland')" class="px-2.5 py-1 rounded-full text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Edinburgh</button>
+        <button onclick="flyToPresetCity('Zermatt', 46.0207, 7.7491, 12.5, 'Valais Alps, Switzerland')" class="px-2.5 py-1 rounded-full text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Zermatt</button>
+        <button onclick="flyToPresetCity('Tokyo', 35.6812, 139.7671, 13.0, 'Kanto Region, Japan')" class="px-2.5 py-1 rounded-full text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Tokyo</button>
+        <button onclick="flyToPresetCity('New York', 40.7580, -73.9855, 13.0, 'Manhattan, United States')" class="px-2.5 py-1 rounded-full text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">New York</button>
+      </div>
+    </div>
+
+    <div class="flex-1 max-w-md relative">
+      <form onsubmit="handleSearchSubmit(event)" class="relative flex items-center">
+        <i class="ph ph-magnifying-glass text-gray-400 text-base absolute left-3 pointer-events-none"></i>
+        <input
+          id="placeSearchInput"
+          type="text"
+           oninput="handleSearchTyping(this.value)"
+          placeholder="Search any city, neighborhood, or street..."
+          class="w-full bg-gray-100/90 hover:bg-gray-100 focus:bg-white border border-transparent focus:border-blue-600 rounded-xl pl-9 pr-20 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all"
+        />
+        <button type="submit" class="absolute right-1.5 px-2.5 py-1 bg-white hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-medium border border-gray-200 shadow-2xs transition-colors">
+          Search
+        </button>
+      </form>
+      <div id="searchSuggestionsBox" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50 max-h-72 overflow-y-auto thin-scroll"></div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button onclick="resetViewToFit()" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200/80 text-gray-700 text-xs font-semibold transition-colors" title="Fit poster to screen">
+        <i class="ph ph-corners-out text-sm"></i>
+        <span>Fit Canvas</span>
+      </button>
+      <button onclick="openExportModal()" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-xs transition-all">
+        <i class="ph ph-download-simple text-base"></i>
+        <span>Export Map</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <aside class="hidden md:flex w-[380px] lg:w-[410px] bg-white border-r border-gray-200 flex-col z-20 shrink-0">
+      <div class="grid grid-cols-5 gap-1 p-2 border-b border-gray-100 bg-gray-50/70">
+        <button onclick="switchStudioTab('elements')" id="tabBtn-elements" class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-semibold bg-white text-blue-600 shadow-2xs border border-gray-200/80 transition-all">
+          <i class="ph ph-stack text-base"></i>
+          <span>Layers</span>
+        </button>
+        <button onclick="switchStudioTab('fonts')" id="tabBtn-fonts" class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-medium text-gray-600 hover:text-gray-900 hover:bg-white/60 transition-all">
+          <i class="ph ph-text-aa text-base"></i>
+          <span>Map Fonts</span>
+        </button>
+        <button onclick="switchStudioTab('size')" id="tabBtn-size" class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-medium text-gray-600 hover:text-gray-900 hover:bg-white/60 transition-all">
+          <i class="ph ph-grid-four text-base"></i>
+          <span>Frame & Grid</span>
+        </button>
+        <button onclick="switchStudioTab('legend')" id="tabBtn-legend" class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-medium text-gray-600 hover:text-gray-900 hover:bg-white/60 transition-all">
+          <i class="ph ph-list-bullets text-base"></i>
+          <span>Key & Title</span>
+        </button>
+        <button onclick="switchStudioTab('draw')" id="tabBtn-draw" class="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-medium text-gray-600 hover:text-gray-900 hover:bg-white/60 transition-all">
+          <i class="ph ph-polygon text-base"></i>
+          <span>Draw</span>
+        </button>
+      </div>
+
+      <div id="desktopSidebarBody" class="flex-1 overflow-y-auto thin-scroll p-4 space-y-5"></div>
+    </aside>
+
+    <main class="flex-1 relative flex flex-col overflow-hidden workspace-dots">
+
+      <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-white/95 backdrop-blur-md border border-gray-200/90 rounded-2xl p-1.5 shadow-lg max-w-[95vw] overflow-x-auto">
+        <button onclick="setActiveTool('pan')" id="toolBtn-pan" class="px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 bg-blue-600 text-white shadow-2xs transition-all shrink-0">
+          <i class="ph ph-hand text-sm"></i>
+          <span>Move Map</span>
+        </button>
+        <button onclick="setActiveTool('pin')" id="toolBtn-pin" class="px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 text-gray-700 hover:bg-gray-100 transition-all shrink-0">
+          <i class="ph ph-map-pin text-sm"></i>
+          <span>Add Pin</span>
+        </button>
+        <button onclick="setActiveTool('route')" id="toolBtn-route" class="px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 text-gray-700 hover:bg-gray-100 transition-all shrink-0">
+          <i class="ph ph-path text-sm"></i>
+          <span>Draw Line</span>
+        </button>
+        <button onclick="setActiveTool('zone')" id="toolBtn-zone" class="px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 text-gray-700 hover:bg-gray-100 transition-all shrink-0">
+          <i class="ph ph-polygon text-sm"></i>
+          <span>Draw Area</span>
+        </button>
+        <button onclick="setActiveTool('text')" id="toolBtn-text" class="px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 text-gray-700 hover:bg-gray-100 transition-all shrink-0">
+          <i class="ph ph-text-t text-sm"></i>
+          <span>Add Label</span>
+        </button>
+        <button onclick="setActiveTool('measure')" id="toolBtn-measure" class="px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 text-gray-700 hover:bg-gray-100 transition-all shrink-0">
+          <i class="ph ph-ruler text-sm"></i>
+          <span>Measure</span>
+        </button>
+      </div>
+
+      <div id="toolHelperBanner" class="hidden absolute top-16 left-1/2 -translate-x-1/2 z-20 bg-gray-900/90 backdrop-blur-md text-white px-4 py-2 rounded-full shadow-lg text-xs font-medium flex items-center gap-3">
+        <span id="toolHelperText">Click anywhere on the map</span>
+        <button id="finishRouteBtn" onclick="finishActiveDrawingShape()" class="hidden px-2.5 py-0.5 rounded-full bg-blue-500 hover:bg-blue-400 text-white font-semibold">Finish Shape</button>
+        <button onclick="setActiveTool('pan')" class="px-2 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-white">Done</button>
+      </div>
+
+      <div id="workspaceViewport" class="flex-1 w-full h-full flex items-center justify-center overflow-hidden p-4 sm:p-8 pb-20 md:pb-8 relative">
+        <div id="posterZoomStage" class="relative flex items-center justify-center transition-transform duration-150 ease-out origin-center">
+          <div id="posterPaperFrame" class="poster-card-shadow relative flex flex-col transition-all duration-150 overflow-hidden" style="background-color: #faf8f5; width: 540px; height: 720px; padding: 28px;">
+
+            <div id="topHeaderBlock" class="hidden pb-3.5 shrink-0">
+              <div class="flex items-baseline justify-between gap-4">
+                <div>
+                  <div id="topHeaderSeries" class="text-[10px] font-mono uppercase tracking-widest opacity-65 mb-0.5">Landranger Series 1:50,000</div>
+                  <h1 id="topHeaderTitle" class="text-2xl font-bold tracking-tight leading-tight">Toronto</h1>
+                  <p id="topHeaderSubtitle" class="text-xs opacity-75 mt-0.5">Ontario, Canada</p>
+                </div>
+                <div class="text-right">
+                  <div id="topHeaderSheetCode" class="text-xs font-mono font-bold px-2 py-0.5 rounded border inline-block mb-1" style="border-color: rgba(17,24,39,0.25);">SHEET 104</div>
+                  <div id="topHeaderCoords" class="text-[11px] font-mono opacity-70">43.6532° N, 79.3832° W</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="mapCollarWrapper" class="relative flex-1 w-full h-full flex flex-col overflow-hidden">
+              <div id="mapMaskContainer" class="relative flex-1 w-full h-full overflow-hidden">
+                <div id="maplibreContainer" class="w-full h-full"></div>
+
+                <canvas id="contourOverlayCanvas" class=" absolute inset-0 w-full h-full pointer-events-none z-[6]"></canvas>
+                <canvas id="customMapLabelsCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-[7]"></canvas>
+                <svg id="coordGridOverlay" class="hidden absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
+
+                <div id="floatingTitleBadge" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-10 px-5 py-2.5 rounded-2xl shadow-md backdrop-blur-md text-center pointer-events-none border" style="background-color: rgba(250, 248, 245, 0.92);">
+                  <div id="floatingTitleText" class="text-lg font-bold leading-snug">Toronto</div>
+                  <div id="floatingSubtitleText" class="text-[11px] opacity-75">Ontario, Canada</div>
+                  <div id="floatingCoordsText" class="text-[10px] font-mono opacity-65 mt-0.5">43.6532° N, 79.3832° W</div>
+                </div>
+
+                <button onclick="resetNorthBearing()" id="compassOverlay" class="absolute top-3.5 right-3.5 z-10 px-2.5 py-2 rounded-xl shadow-md flex flex-col items-center justify-center pointer-events-auto border transition-transform" style="background-color: rgba(255, 255, 255, 0.93); border-color: rgba(17, 24, 39, 0.15);" title="Reset North">
+                  <div id="compassDiagramBox" class="flex flex-col items-center">
+                    <i id="compassNeedleIcon" class="ph ph-compass text-xl text-gray-800"></i>
+                    <span id="compassMagLabel" class="hidden text-[8px] font-mono text-gray-600 mt-0.5">GN / MN 1.4°W</span>
+                  </div>
+                </button>
+
+                <div id="scaleBarOverlay" class="absolute bottom-3.5 right-3.5 z-10 px-2.5 py-1.5 rounded-lg shadow-xs pointer-events-none border flex flex-col items-end gap-1" style="background-color: rgba(255, 255, 255, 0.93); border-color: rgba(17, 24, 39, 0.15);">
+                  <div class="flex items-center justify-between w-full text-[10px] font-mono font-semibold text-gray-800 gap-2">
+                    <span id="scaleRatioText" class="text-[9px] text-blue-700 font-bold">1:50,000</span>
+                    <span id="scaleBarDistanceText">1 km</span>
+                  </div>
+                  <div id="scaleBarGraphic" class="h-1.5 border border-gray-800 flex" style="width: 84px;">
+                    <div class="w-1/4 h-full bg-gray-800"></div>
+                    <div class="w-1/4 h-full bg-white"></div>
+                    <div class="w-1/4 h-full bg-gray-800"></div>
+                    <div class="w-1/4 h-full bg-white"></div>
+                  </div>
+                </div>
+
+                <div id="legendFloatingOverlay" class="absolute bottom-3.5 left-3.5 z-10 rounded-xl shadow-md p-3 pointer-events-auto border max-w-[255px] transition-all" style="background-color: rgba(255, 255, 255, 0.94); border-color: rgba(17, 24, 39, 0.15);">
+                  <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-gray-200/80 gap-2">
+                    <span id="legendFloatingTitle" class="text-[11px] font-bold text-gray-800">Map Key</span>
+                    <span id="legendContourNote" class="text-[9px] font-mono text-amber-700 hidden">Contours 10m</span>
+                  </div>
+                  <div id="legendFloatingList" class="grid grid-cols-1 gap-1.5"></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="legendFooterBarBlock" class="hidden pt-3 shrink-0">
+              <div class="px-3 py-2 rounded-xl border flex flex-wrap items-center justify-between gap-2" style="background-color: rgba(255, 255, 255, 0.65); border-color: rgba(17, 24, 39, 0.12);">
+                <span id="legendFooterTitle" class="text-xs font-bold text-gray-800 mr-2">Map Key:</span>
+                <div id="legendFooterList" class="flex flex-wrap items-center gap-x-4 gap-y-1.5 flex-1"></div>
+              </div>
+            </div>
+
+            <div id="bottomEditorialBlock" class="pt-4 text-center shrink-0">
+              <h1 id="bottomEditorialTitle" class="text-2xl sm:text-3xl font-bold tracking-tight leading-tight">Toronto</h1>
+              <p id="bottomEditorialSubtitle" class="text-xs opacity-75 mt-0.5">Ontario, Canada</p>
+              <p id="bottomEditorialCoords" class="text-[11px] font-mono opacity-65 mt-1">43.6532° N, 79.3832° W</p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="absolute bottom-20 md:bottom-5 right-4 z-20 flex flex-col gap-1.5 bg-white/95 backdrop-blur-md border border-gray-200 rounded-2xl p-1.5 shadow-lg">
+          <button onclick="zoomMapBy(1)" class="w-8 h-8 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-700" title="Zoom In Map">
+            <i class="ph ph-plus text-base"></i>
+          </button>
+          <button onclick="zoomMapBy(-1)" class="w-8 h-8 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-700" title="Zoom Out Map">
+            <i class="ph ph-minus text-base"></i>
+          </button>
+          <div class="h-px bg-gray-200 my-0.5"></div>
+          <button onclick="scalePosterPreview(1.12)" class="w-8 h-8 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-700" title="Enlarge Poster Preview">
+            <i class="ph ph-magnifying-glass-plus text-base"></i>
+          </button>
+          <button onclick="scalePosterPreview(0.89)" class="w-8 h-8 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-700" title="Shrink Poster Preview">
+            <i class="ph ph-magnifying-glass-minus text-base"></i>
+          </button>
+        </div>
+
+        <div id="statusToast" class="pointer-events-none opacity-0 translate-y-2 transition-all duration-200 absolute bottom-20 md:bottom-5 left-4 z-30 bg-gray-900 text-white px-3.5 py-2 rounded-xl shadow-lg flex items-center gap-2 text-xs font-medium">
+          <i class="ph ph-check-circle text-emerald-400 text-base"></i>
+          <span id="statusToastText">Map updated</span>
+        </div>
+      </div>
+
+    </main>
+
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 grid grid-cols-5 z-30 px-1">
+      <button onclick="openMobileSheet('elements')" class="flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-blue-600">
+        <i class="ph ph-stack text-lg"></i>
+        <span class="text-[10px] font-medium">Layers</span>
+      </button>
+      <button onclick="openMobileSheet('fonts')" class="flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-blue-600">
+        <i class="ph ph-text-aa text-lg"></i>
+        <span class="text-[10px] font-medium">Map Fonts</span>
+      </button>
+      <button onclick="openMobileSheet('size')" class="flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-blue-600">
+        <i class="ph ph-grid-four text-lg"></i>
+        <span class="text-[10px] font-medium">Grid & Size</span>
+      </button>
+      <button onclick="openMobileSheet('legend')" class="flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-blue-600">
+        <i class="ph ph-list-bullets text-lg"></i>
+        <span class="text-[10px] font-medium">Key & Title</span>
+      </button>
+      <button onclick="openMobileSheet('draw')" class="flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-blue-600">
+        <i class="ph ph-polygon text-lg"></i>
+        <span class="text-[10px] font-medium">Draw</span>
+      </button>
+    </nav>
+
+    <div id="mobileSheetBackdrop" onclick="closeMobileSheet()" class="md:hidden hidden fixed inset-0 bg-black/40 z-40"></div>
+    <div id="mobileSheetContainer" class="md:hidden fixed bottom-0 left-0 right-0 max-h-[78vh] bg-white border-t border-gray-200 rounded-t-3xl z-50 flex flex-col translate-y-full transition-transform duration-300 ease-out shadow-2xl">
+      <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+        <h3 id="mobileSheetHeading" class="text-sm font-bold text-gray-900">Map Elements</h3>
+        <button onclick="closeMobileSheet()" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">
+          <i class="ph ph-x text-base"></i>
+        </button>
+      </div>
+      <div id="mobileSheetBody" class="p-4 overflow-y-auto thin-scroll space-y-6 flex-1"></div>
+    </div>
+
+  </div>
+
+  <div id="exportModalBackdrop" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white border border-gray-200 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl">
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold text-gray-900">Export Your Custom Map</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Download high-resolution prints or scalable vector artwork</p>
+        </div>
+        <button onclick="closeExportModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600">
+          <i class="ph ph-x text-base"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+              <i class="ph ph-image text-xl"></i>
+            </div>
+            <div>
+              <div class="text-sm font-bold text-gray-900">High-Resolution Image (.png)</div>
+              <div class="text-xs text-gray-500">Complete poster with map, frame, pins, key, and title</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="exportPosterAsPng(1)" class="py-2 px-3 rounded-xl bg-white hover:bg-gray-100 text-xs font-semibold text-gray-700 border border-gray-200 shadow-2xs transition-all">
+              1x Standard
+            </button>
+            <button onclick="exportPosterAsPng(2)" class="py-2 px-3 rounded-xl bg-white hover:bg-gray-100 text-xs font-semibold text-blue-600 border border-blue-200 shadow-2xs transition-all">
+              2x Crisp Print
+            </button>
+            <button onclick="exportPosterAsPng(4)" class="py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white shadow-2xs transition-all">
+              4x Ultra Print
+            </button>
+          </div>
+        </div>
+
+        <button onclick="exportPosterAsSvg()" class="w-full p-4 rounded-2xl bg-gray-50 hover:bg-blue-50/50 border border-gray-200 hover:border-blue-300 flex items-center justify-between transition-all text-left group">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+              <i class="ph ph-bezier-curve text-xl"></i>
+            </div>
+            <div>
+              <div class="text-sm font-bold text-gray-900 group-hover:text-blue-600">Editable Vector Artwork (.svg)</div>
+              <div class="text-xs text-gray-500">Scalable vector paths, roads, trains, key, and frame</div>
+            </div>
+          </div>
+          <i class="ph ph-arrow-right text-gray-400 group-hover:text-blue-600 text-lg"></i>
+        </button>
+
+        <button onclick="exportPosterAsPdf()" class="w-full p-4 rounded-2xl bg-gray-50 hover:bg-emerald-50/50 border border-gray-200 hover:border-emerald-300 flex items-center justify-between transition-all text-left group">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+              <i class="ph ph-printer text-xl"></i>
+            </div>
+            <div>
+              <div class="text-sm font-bold text-gray-900 group-hover:text-emerald-700">Print-Ready Sheet (.pdf)</div>
+              <div class="text-xs text-gray-500">Formatted to your exact paper size and metric dimensions</div>
+            </div>
+          </div>
+          <i class="ph ph-arrow-right text-gray-400 group-hover:text-emerald-700 text-lg"></i>
+        </button>
+      </div>
+
+      <div class="px-6 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+        <span id="exportModalSizeLabel">Size: 18 × 24 in</span>
+        <span id="exportProgressLabel">Ready to download</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MAP_FONT_OPTIONS = [
+      { id: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans (Clean Modern)', css: '"Plus Jakarta Sans", sans-serif' },
+      { id: 'Fraunces', label: 'Fraunces (Ordnance Survey Serif)', css: '"Fraunces", Georgia, serif' },
+      { id: 'Playfair Display', label: 'Playfair Display (Classic Atlas)', css: '"Playfair Display", Georgia, serif' },
+      { id: 'Cinzel', label: 'Cinzel (Engraved Roman)', css: '"Cinzel", Georgia, serif' },
+      { id: 'Cormorant Garamond', label: 'Cormorant (Antiquarian Italic)', css: '"Cormorant Garamond", Georgia, serif' },
+      { id: 'Space Grotesk', label: 'Space Grotesk (Technical Geo)', css: '"Space Grotesk", sans-serif' },
+      { id: 'Outfit', label: 'Outfit (Geometric Transit)', css: '"Outfit", sans-serif' },
+      { id: 'JetBrains Mono', label: 'JetBrains Mono (Surveyor Code)', css: '"JetBrains Mono", monospace' }
+    ];
+
+    const COLOR_THEMES = {
+      os_landranger: {
+        name: 'OS Landranger 1:50k',
+        badge: 'Ordnance Survey',
+        paperBg: '#fdfbf7',
+        borderStroke: '#0f172a',
+        textPrimary: '#0f172a',
+        land: '#fcf9ee',
+        water: '#bae6fd',
+        waterStroke: '#0284c7',
+        parks: '#bbf7d0',
+        buildings: '#cbd5e1',
+        railways: '#1e293b',
+        highways: '#db2777',
+        highwayCasing: '#1e293b',
+        secondaryRoads: '#f97316',
+        secondaryCasing: '#334155',
+        streets: '#ffffff',
+        streetCasing: '#64748b',
+        paths: '#e11d48',
+        borders: '#64748b',
+        contours: '#d97706',
+        placeLabels: '#0f172a',
+        streetLabels: '#1e293b',
+        waterLabels: '#0369a1',
+        pois: '#be185d',
+        gridColor: '#0284c7',
+        enableGrid: true,
+        enableContours: true,
+        enableHillshade: true
+      },
+      os_explorer: {
+        name: 'OS Explorer 1:25k',
+        badge: 'Outdoor Leisure',
+        paperBg: '#faf8f2',
+        borderStroke: '#14532d',
+        textPrimary: '#14532d',
+        land: '#f9f6ea',
+        water: '#a5f3fc',
+        waterStroke: '#0891b2',
+        parks: '#86efac',
+        buildings: '#d6d3d1',
+        railways: '#1c1917',
+        highways: '#ea580c',
+        highwayCasing: '#1c1917',
+        secondaryRoads: '#facc15',
+        secondaryCasing: '#44403c',
+        streets: '#ffffff',
+        streetCasing: '#78716c',
+        paths: '#15803d',
+        borders: '#57534e',
+        contours: '#b45309',
+        placeLabels: '#1c1917',
+        streetLabels: '#292524',
+        waterLabels: '#0e7490',
+        pois: '#c2410c',
+        gridColor: '#0284c7',
+        enableGrid: true,
+        enableContours: true,
+        enableHillshade: true
+      },
+      swisstopo: {
+        name: 'Swiss Alpine Topo',
+        badge: 'Swisstopo',
+        paperBg: '#ffffff',
+        borderStroke: '#111827',
+        textPrimary: '#111827',
+        land: '#f8faf7',
+        water: '#93c5fd',
+        waterStroke: '#1d4ed8',
+        parks: '#bbf7d0',
+        buildings: '#475569',
+        railways: '#b91c1c',
+        highways: '#f97316',
+        highwayCasing: '#1e293b',
+        secondaryRoads: '#fde047',
+        secondaryCasing: '#334155',
+        streets: '#ffffff',
+        streetCasing: '#64748b',
+        paths: '#dc2626',
+        borders: '#ef4444',
+        contours: '#9a3412',
+        placeLabels: '#0f172a',
+        streetLabels: '#334155',
+        waterLabels: '#1d4ed8',
+        pois: '#b91c1c',
+        gridColor: '#334155',
+        enableGrid: true,
+        enableContours: true,
+        enableHillshade: true
+      },
+      classic: {
+        name: 'Classic Atlas',
+        badge: 'Editorial',
+        paperBg: '#faf8f5',
+        borderStroke: '#1f2937',
+        textPrimary: '#111827',
+        land: '#f4f1ea',
+        water: '#93c5fd',
+        waterStroke: '#3b82f6',
+        parks: '#bbf7d0',
+        buildings: '#e5e0d5',
+        railways: '#dc2626',
+        highways: '#f59e0b',
+        highwayCasing: '#78350f',
+        secondaryRoads: '#fcd34d',
+        secondaryCasing: '#78350f',
+        streets: '#ffffff',
+        streetCasing: '#cbd5e1',
+        paths: '#9ca3af',
+        borders: '#94a3b8',
+        contours: '#a16207',
+        placeLabels: '#1f2937',
+        streetLabels: '#4b5563',
+        waterLabels: '#1d4ed8',
+        pois: '#2563eb',
+        gridColor: '#64748b',
+        enableGrid: false,
+        enableContours: false,
+        enableHillshade: false
+      },
+      warm: {
+        name: 'Warm Paper',
+        badge: 'Vintage',
+        paperBg: '#f7f3e8',
+        borderStroke: '#292524',
+        textPrimary: '#1c1917',
+        land: '#efe9d9',
+        water: '#84b6c6',
+        waterStroke: '#467b8c',
+        parks: '#c2d5b8',
+        buildings: '#dfd7c4',
+        railways: '#d9381e',
+        highways: '#292524',
+        highwayCasing: '#1c1917',
+        secondaryRoads: '#78716c',
+        secondaryCasing: '#292524',
+        streets: '#faf7f0',
+        streetCasing: '#a8a29e',
+        paths: '#78716c',
+        borders: '#a8a29e',
+        contours: '#854d0e',
+        placeLabels: '#1c1917',
+        streetLabels: '#57534e',
+        waterLabels: '#155e75',
+        pois: '#b45309',
+        gridColor: '#78716c',
+        enableGrid: false,
+        enableContours: false,
+        enableHillshade: false
+      },
+      transit: {
+        name: 'Transit Focus',
+        badge: 'Diagram',
+        paperBg: '#ffffff',
+        borderStroke: '#0f172a',
+        textPrimary: '#0f172a',
+        land: '#f8fafc',
+        water: '#bae6fd',
+        waterStroke: '#38bdf8',
+        parks: '#dcfce7',
+        buildings: '#e2e8f0',
+        railways: '#e11d48',
+        highways: '#94a3b8',
+        highwayCasing: '#64748b',
+        secondaryRoads: '#cbd5e1',
+        secondaryCasing: '#94a3b8',
+        streets: '#e2e8f0',
+        streetCasing: '#cbd5e1',
+        paths: '#94a3b8',
+        borders: '#cbd5e1',
+        contours: '#94a3b8',
+        placeLabels: '#0f172a',
+        streetLabels: '#64748b',
+        waterLabels: '#0284c7',
+        pois: '#0284c7',
+        gridColor: '#94a3b8',
+        enableGrid: false,
+        enableContours: false,
+        enableHillshade: false
+      },
+      midnight: {
+        name: 'Midnight Ink',
+        badge: 'Dark Mode',
+        paperBg: '#0f172a',
+        borderStroke: '#38bdf8',
+        textPrimary: '#f8fafc',
+        land: '#090d16',
+        water: '#0284c7',
+        waterStroke: '#38bdf8',
+        parks: '#064e3b',
+        buildings: '#1e293b',
+        railways: '#f43f5e',
+        highways: '#f59e0b',
+        highwayCasing: '#0f172a',
+        secondaryRoads: '#0ea5e9',
+        secondaryCasing: '#0f172a',
+        streets: '#334155',
+        streetCasing: '#1e293b',
+        paths: '#475569',
+        borders: '#475569',
+        contours: '#38bdf8',
+        placeLabels: '#f8fafc',
+        streetLabels: '#94a3b8',
+        waterLabels: '#7dd3fc',
+        pois: '#38bdf8',
+        gridColor: '#38bdf8',
+        enableGrid: false,
+        enableContours: false,
+        enableHillshade: false
+      },
+      blueprint: {
+        name: 'Architectural Blueprint',
+        badge: 'Technical',
+        paperBg: '#0c2747',
+        borderStroke: '#bae6fd',
+        textPrimary: '#f0f9ff',
+        land: '#081d36',
+        water: '#0369a1',
+        waterStroke: '#7dd3fc',
+        parks: '#075985',
+        buildings: '#133b69',
+        railways: '#facc15',
+        highways: '#e0f2fe',
+        highwayCasing: '#0284c7',
+        secondaryRoads: '#7dd3fc',
+        secondaryCasing: '#0369a1',
+        streets: '#38bdf8',
+        streetCasing: '#075985',
+        paths: '#7dd3fc',
+        borders: '#7dd3fc',
+        contours: '#38bdf8',
+        placeLabels: '#f0f9ff',
+        streetLabels: '#bae6fd',
+        waterLabels: '#e0f2fe',
+        pois: '#facc15',
+        gridColor: '#7dd3fc',
+        enableGrid: true,
+        enableContours: true,
+        enableHillshade: false
+      }
+    };
+
+    const SIZE_PRESETS = [
+      { id: 'poster_18_24', name: 'Poster (18 × 24 in)', widthIn: 18, heightIn: 24 },
+      { id: 'os_sheet', name: 'OS Sheet Ratio (20 × 22 in)', widthIn: 20, heightIn: 22 },
+      { id: 'a3_print', name: 'Large Print (A3)', widthIn: 11.69, heightIn: 16.54 },
+      { id: 'a4_print', name: 'Standard Print (A4)', widthIn: 8.27, heightIn: 11.69 },
+      { id: 'square_12_12', name: 'Square (12 × 12 in)', widthIn: 12, heightIn: 12 },
+      { id: 'wide_16_9', name: 'Widescreen (16 × 9)', widthIn: 16, heightIn: 9 },
+      { id: 'phone_9_16', name: 'Phone Wallpaper (9 × 16)', widthIn: 9, heightIn: 16 },
+      { id: 'custom', name: 'Custom Size', widthIn: 18, heightIn: 24 }
+    ];
+
+    const PIN_ICONS = [
+      { id: 'ph-map-pin', label: 'Pin' },
+      { id: 'ph-mountains', label: 'Peak' },
+      { id: 'ph-train', label: 'Station' },
+      { id: 'ph-tent', label: 'Camp' },
+      { id: 'ph-binoculars', label: 'Viewpoint' },
+      { id: 'ph-castle-turret', label: 'Heritage' },
+      { id: 'ph-coffee', label: 'Cafe/Pub' },
+      { id: 'ph-flag', label: 'Waypoint' }
+    ];
+
+    const state = {
+      activeTab: 'elements',
+      activeTool: 'pan',
+      activeTheme: 'os_landranger',
+      expandedLayerKey: 'highways',
+      posterZoom: 1,
+
+      place: {
+        title: 'Toronto',
+        subtitle: 'Ontario, Canada',
+        seriesTitle: 'Landranger Series 1:50,000',
+        sheetCode: 'SHEET 104',
+        lat: 43.6532,
+        lng: -79.3832,
+        zoom: 13.2,
+        bearing: 0
+      },
+
+      mapFonts: {
+        useCustomEngine: true,
+        placeFont: 'Fraunces',
+        placeSizeScale: 1.05,
+        placeTracking: 0.5,
+        placeUppercase: false,
+        placeWeight: '700',
+        streetFont: 'Plus Jakarta Sans',
+        streetSizeScale: 1.0,
+        streetUppercase: false,
+        showRoadShields: true,
+        waterFont: 'Cormorant Garamond',
+        waterItalic: true,
+        haloColor: '#ffffff',
+        haloWidth: 3.0,
+        labelDensity: 'normal'
+      },
+
+      terrain: {
+        hillshade: true,
+        hillshadeExaggeration: 0.45,
+        contours: true,
+        contourColor: '#d97706',
+        contourIntervalM: 10,
+        contourOpacity: 0.55,
+        showSpotHeights: true
+      },
+
+      elements: {
+        highways: {
+          name: 'Motorways & Primary (A-Roads)',
+          visible: true,
+          color: '#db2777',
+          cased: true,
+          casingColor: '#1e293b',
+          width: 3.2,
+          inKey: true,
+          keyLabel: 'Primary A-Road / Motorway'
+        },
+        secondaryRoads: {
+          name: 'Secondary (B-Roads)',
+          visible: true,
+          color: '#f97316',
+          cased: true,
+          casingColor: '#334155',
+          width: 2.4,
+          inKey: true,
+          keyLabel: 'Secondary B-Road'
+        },
+        streets: {
+          name: 'Local Streets & Minor Roads',
+          visible: true,
+          color: '#ffffff',
+          cased: true,
+          casingColor: '#64748b',
+          width: 1.6,
+          inKey: true,
+          keyLabel: 'Minor Road (Fenced)'
+        },
+        paths: {
+          name: 'Footpaths, Bridleways & Trails',
+          visible: true,
+          color: '#e11d48',
+          dashStyle: 'dashed',
+          width: 1.5,
+          inKey: true,
+          keyLabel: 'Public Right of Way / Trail'
+        },
+        railways: {
+          name: 'Railways & Subway Lines',
+          visible: true,
+          color: '#1e293b',
+          width: 2.6,
+          dashedTies: true,
+          showStationCircles: true,
+          inKey: true,
+          keyLabel: 'Railway & Station'
+        },
+        water: {
+          name: 'Water, Rivers & Coastline',
+          visible: true,
+          color: '#bae6fd',
+          strokeColor: '#0284c7',
+          strokeWidth: 1.5,
+          inKey: true,
+          keyLabel: 'Water & Riverbank'
+        },
+        parks: {
+          name: 'Woodland, Parks & Nature',
+          visible: true,
+          color: '#bbf7d0',
+          opacity: 0.85,
+          inKey: true,
+          keyLabel: 'Woodland & Parkland'
+        },
+        buildings: {
+          name: 'Buildings & Urban Blocks',
+          visible: true,
+          color: '#cbd5e1',
+          extrude3d: false,
+          inKey: true,
+          keyLabel: 'Surface Buildings'
+        },
+        borders: {
+          name: 'Parish & County Boundaries',
+          visible: true,
+          color: '#64748b',
+          width: 1.4,
+          inKey: false,
+          keyLabel: 'Administrative Boundary'
+        },
+        land: {
+          name: 'Land Ground Tint',
+          visible: true,
+          color: '#fcf9ee',
+          inKey: false,
+          keyLabel: 'Land'
+        },
+        placeLabels: {
+          name: 'City, Town & Village Names',
+          visible: true,
+          color: '#0f172a',
+          inKey: false,
+          keyLabel: 'Settlements'
+        },
+        streetLabels: {
+          name: 'Street & Road Numbers',
+          visible: true,
+          color: '#1e293b',
+          inKey: false,
+          keyLabel: 'Road Names'
+        },
+        pois: {
+          name: 'Landmarks, Peaks & Stations',
+          visible: true,
+          color: '#be185d',
+          inKey: false,
+          keyLabel: 'Points of Interest'
+        }
+      },
+
+      frame: {
+        shape: 'rectangle',
+        presetId: 'poster_18_24',
+        unit: 'in',
+        widthIn: 18,
+        heightIn: 24,
+        paperBg: '#fdfbf7',
+        marginPx: 28,
+        showBorder: true,
+        borderStyle: 'surveyor',
+        borderColor: '#0f172a',
+        borderWidth: 2,
+        showCoordGrid: true,
+        gridStyle: 'os_national',
+        gridColor: '#0284c7',
+        gridOpacity: 0.35,
+        showGridNumbers: true,
+        gridSpacingPx: 85
+      },
+
+      titleAndKey: {
+        showTitle: true,
+        layout: 'top',
+        fontFamily: 'serif',
+        textColor: '#0f172a',
+        showCoords: true,
+        showLegend: true,
+        legendTitle: 'OS Landranger Key',
+        legendPosition: 'bottom-left',
+        showScaleBar: true,
+        scaleUnit: 'metric',
+        showCompass: true,
+        showMagneticNorth: true,
+        customKeyItems: []
+      },
+
+      drawing: {
+        pinDefaults: {
+          label: 'Trig Point 142m',
+          color: '#be185d',
+          icon: 'ph-mountains'
+        },
+        routeDefaults: {
+          name: 'Scenic Ridge Trail',
+          color: '#dc2626',
+          width: 3.5,
+          style: 'dashed'
+        },
+        zoneDefaults: {
+          name: 'Conservation Area',
+          color: '#16a34a',
+          opacity: 0.28
+        },
+        textDefaults: {
+          text: 'Roman Ruins (Site of)',
+          color: '#0f172a',
+          size: 13
+        },
+        pins: [],
+        routes: [],
+        zones: [],
+        labels: [],
+        activeRouteCoords: [],
+        activeZoneCoords: [],
+        measureCoords: []
+      }
+    };
+
+    let map = null;
+    let mapStyleLoaded = false;
+    let domMarkers = [];
+    let searchTimeout = null;
+    let labelRenderRaf = null;
+
+    function initMapLibre() {
+      map = new maplibregl.Map({
+        container: 'maplibreContainer',
+        style: 'https://tiles.openfreemap.org/styles/bright',
+        center: [state.place.lng, state.place.lat],
+        zoom: state.place.zoom,
+        preserveDrawingBuffer: true,
+        attributionControl: false
+      });
+
+      map.on('load', () => {
+        mapStyleLoaded = true;
+        setupCustomMapLayers();
+        applyMapElementStyles();
+        updateAllPosterOverlays();
+        scheduleCustomOverlayRender();
+      });
+
+      map.on('styledata', () => {
+        if (mapStyleLoaded) {
+          applyMapElementStyles();
+          scheduleCustomOverlayRender();
+        }
+      });
+
+      map.on('move', () => {
+        const c = map.getCenter();
+        state.place.lat = c.lat;
+        state.place.lng = c.lng;
+        state.place.zoom = map.getZoom();
+        state.place.bearing = map.getBearing();
+        updateLiveCoordinatesAndScale();
+        if (state.frame.showCoordGrid && state.frame.showGridNumbers) {
+          renderCoordGridOverlay();
+        }
+        scheduleCustomOverlayRender();
+      });
+
+      map.on('idle', () => {
+        scheduleCustomOverlayRender();
+      });
+
+      map.on('click', (e) => {
+        handleMapCanvasClick(e);
+      });
+
+      map.on('dblclick', (e) => {
+        if ((state.activeTool === 'route' && state.drawing.activeRouteCoords.length >= 2) ||
+            (state.activeTool === 'zone' && state.drawing.activeZoneCoords.length >= 3)) {
+          e.preventDefault();
+          finishActiveDrawingShape();
+        }
+      });
+    }
+
+    function setupCustomMapLayers() {
+      const style = map.getStyle();
+      if (!style || !style.sources) return;
+
+      const vectorSourceName = Object.keys(style.sources).find(k => style.sources[k].type === 'vector') || 'openmaptiles';
+
+      if (!map.getSource('cartogram-terrain-dem')) {
+        try {
+          map.addSource('cartogram-terrain-dem', {
+            type: 'raster-dem',
+            tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+            encoding: 'terrarium',
+            tileSize: 256,
+            maxzoom: 14
+          });
+
+          const firstRoadOrWaterLayer = style.layers.find(l => l.type === 'line' || l.type === 'symbol');
+          map.addLayer({
+            id: 'cartogram-hillshade',
+            type: 'hillshade',
+            source: 'cartogram-terrain-dem',
+            layout: {
+              visibility: state.terrain.hillshade ? 'visible' : 'none'
+            },
+            paint: {
+              'hillshade-exaggeration': state.terrain.hillshadeExaggeration,
+              'hillshade-shadow-color': '#334155',
+              'hillshade-highlight-color': '#ffffff',
+              'hillshade-accent-color': '#64748b'
+            }
+          }, firstRoadOrWaterLayer ? firstRoadOrWaterLayer.id : undefined);
+        } catch (e) {}
+      }
+
+      if (style.sources[vectorSourceName]) {
+        const firstSymbolLayer = style.layers.find(l => l.type === 'symbol');
+        const beforeSymbolId = firstSymbolLayer ? firstSymbolLayer.id : undefined;
+
+        const addRoadLayerSafe = (id, filter, paint, layoutExtra = {}) => {
+          if (map.getLayer(id)) return;
+          try {
+            map.addLayer({
+              id,
+              type: 'line',
+              source: vectorSourceName,
+              'source-layer': 'transportation',
+              filter,
+              layout: Object.assign({ 'line-join': 'round', 'line-cap': 'round' }, layoutExtra),
+              paint
+            }, beforeSymbolId);
+          } catch (e) {}
+        };
+
+        addRoadLayerSafe(
+          'cartogram-water-shoreline',
+          ['all'],
+          { 'line-color': state.elements.water.strokeColor, 'line-width': state.elements.water.strokeWidth }
+        );
+
+        try {
+          if (!map.getLayer('cartogram-water-outline') && style.sources[vectorSourceName]) {
+            map.addLayer({
+              id: 'cartogram-water-outline',
+              type: 'line',
+              source: vectorSourceName,
+              'source-layer': 'water',
+              paint: {
+                'line-color': state.elements.water.strokeColor,
+                'line-width': state.elements.water.strokeWidth,
+                'line-opacity': 0.85
+              }
+            }, beforeSymbolId);
+          }
+        } catch (e) {}
+
+        addRoadLayerSafe(
+          'cartogram-street-casing',
+          ['in', 'class', 'minor', 'service', 'tertiary', 'residential', 'unclassified'],
+          {
+            'line-color': state.elements.streets.casingColor,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 1.8, 14, 4.2, 17, 9.0]
+          }
+        );
+
+        addRoadLayerSafe(
+          'cartogram-street-fill',
+          ['in', 'class', 'minor', 'service', 'tertiary', 'residential', 'unclassified'],
+          {
+            'line-color': state.elements.streets.color,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.8, 14, 2.4, 17, 6.2]
+          }
+        );
+
+        addRoadLayerSafe(
+          'cartogram-secondary-casing',
+          ['in', 'class', 'secondary'],
+          {
+            'line-color': state.elements.secondaryRoads.casingColor,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.8, 13, 4.8, 16, 9.5]
+          }
+        );
+
+        addRoadLayerSafe(
+          'cartogram-secondary-fill',
+          ['in', 'class', 'secondary'],
+          {
+            'line-color': state.elements.secondaryRoads.color,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.0, 13, 3.0, 16, 6.5]
+          }
+        );
+
+        addRoadLayerSafe(
+          'cartogram-highway-casing',
+          ['in', 'class', 'motorway', 'trunk', 'primary'],
+          {
+            'line-color': state.elements.highways.casingColor,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1.8, 12, 5.4, 16, 11.5]
+          }
+        );
+
+        addRoadLayerSafe(
+          'cartogram-highway-fill',
+          ['in', 'class', 'motorway', 'trunk', 'primary'],
+          {
+            'line-color': state.elements.highways.color,
+            'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1.0, 12, 3.4, 16, 8.2]
+          }
+        );
+
+        addRoadLayerSafe(
+          'cartogram-paths-os',
+          ['in', 'class', 'path', 'track', 'pedestrian', 'footway', 'bridleway', 'cycleway', 'steps'],
+          {
+            'line-color': state.elements.paths.color,
+            'line-width': state.elements.paths.width,
+            'line-dasharray': [2.5, 2.0]
+          }
+        );
+
+        if (!map.getLayer('cartogram-rail-base')) {
+          try {
+            map.addLayer({
+              id: 'cartogram-rail-base',
+              type: 'line',
+              source: vectorSourceName,
+              'source-layer': 'transportation',
+              filter: ['in', 'class', 'rail', 'transit', 'subway', 'tram', 'light_rail', 'narrow_gauge', 'funicular', 'monorail'],
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+              },
+              paint: {
+                'line-color': state.elements.railways.color,
+                'line-width': [
+                  'interpolate', ['linear'], ['zoom'],
+                  8, state.elements.railways.width * 0.5,
+                  13, state.elements.railways.width,
+                  16, state.elements.railways.width * 1.6
+                ],
+                'line-opacity': 0.95
+              }
+            }, beforeSymbolId);
+          } catch (e) {}
+        }
+
+        if (!map.getLayer('cartogram-rail-ties')) {
+          try {
+            map.addLayer({
+              id: 'cartogram-rail-ties',
+              type: 'line',
+              source: vectorSourceName,
+              'source-layer': 'transportation',
+              filter: ['in', 'class', 'rail', 'transit', 'subway', 'tram', 'light_rail'],
+              layout: {
+                'line-join': 'round'
+              },
+              paint: {
+                'line-color': '#ffffff',
+                'line-width': [
+                  'interpolate', ['linear'], ['zoom'],
+                  10, state.elements.railways.width * 0.8,
+                  14, state.elements.railways.width * 1.4,
+                  17, state.elements.railways.width * 2.2
+                ],
+                'line-dasharray': [0.4, 2.5],
+                'line-opacity': state.elements.railways.dashedTies ? 0.9 : 0
+              }
+            }, beforeSymbolId);
+          } catch (e) {}
+        }
+
+        if (!map.getLayer('cartogram-3d-buildings')) {
+          try {
+            map.addLayer({
+              id: 'cartogram-3d-buildings',
+              type: 'fill-extrusion',
+              source: vectorSourceName,
+              'source-layer': 'building',
+              layout: {
+                visibility: state.elements.buildings.extrude3d ? 'visible' : 'none'
+              },
+              paint: {
+                'fill-extrusion-color': state.elements.buildings.color,
+                'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 18],
+                'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+                'fill-extrusion-opacity': 0.85
+              }
+            }, beforeSymbolId);
+          } catch (e) {}
+        }
+      }
+
+      if (!map.getSource('cartogram-user-zones')) {
+        map.addSource('cartogram-user-zones', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+        });
+
+        map.addLayer({
+          id: 'cartogram-user-zones-fill',
+          type: 'fill',
+          source: 'cartogram-user-zones',
+          paint: {
+            'fill-color': ['get', 'color'],
+            'fill-opacity': ['get', 'opacity']
+          }
+        });
+
+        map.addLayer({
+          id: 'cartogram-user-zones-outline',
+          type: 'line',
+          source: 'cartogram-user-zones',
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': 2,
+            'line-dasharray': [3, 2]
+          }
+        });
+      }
+
+      if (!map.getSource('cartogram-user-routes')) {
+        map.addSource('cartogram-user-routes', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+        });
+
+        map.addLayer({
+          id: 'cartogram-user-routes-line',
+          type: 'line',
+          source: 'cartogram-user-routes',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': ['get', 'width']
+          }
+        });
+
+        map.addLayer({
+          id: 'cartogram-user-routes-ties',
+          type: 'line',
+          source: 'cartogram-user-routes',
+          filter: ['!=', ['get', 'style'], 'solid'],
+          layout: {
+            'line-join': 'round'
+          },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': ['*', ['get', 'width'], 0.75],
+            'line-dasharray': [0.6, 2.2]
+          }
+        });
+      }
+
+      if (!map.getSource('cartogram-measure-source')) {
+        map.addSource('cartogram-measure-source', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+        });
+
+        map.addLayer({
+          id: 'cartogram-measure-line',
+          type: 'line',
+          source: 'cartogram-measure-source',
+          paint: {
+            'line-color': '#2563eb',
+            'line-width': 3,
+            'line-dasharray': [2, 2]
+          }
+        });
+
+        map.addLayer({
+          id: 'cartogram-measure-pts',
+          type: 'circle',
+          source: 'cartogram-measure-source',
+          paint: {
+            'circle-radius': 5,
+            'circle-color': '#2563eb',
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff'
+          }
+        });
+      }
+    }
+
+    function applyMapElementStyles() {
+      if (!map || !mapStyleLoaded) return;
+      const style = map.getStyle();
+      if (!style || !style.layers) return;
+
+      const E = state.elements;
+      const useCustomText = state.mapFonts.useCustomEngine;
+
+      if (map.getLayer('cartogram-hillshade')) {
+        map.setLayoutProperty('cartogram-hillshade', 'visibility', state.terrain.hillshade ? 'visible' : 'none');
+        try {
+          map.setPaintProperty('cartogram-hillshade', 'hillshade-exaggeration', state.terrain.hillshadeExaggeration);
+        } catch (e) {}
+      }
+
+      if (map.getLayer('cartogram-water-outline')) {
+        map.setLayoutProperty('cartogram-water-outline', 'visibility', E.water.visible ? 'visible' : 'none');
+        try {
+          map.setPaintProperty('cartogram-water-outline', 'line-color', E.water.strokeColor);
+          map.setPaintProperty('cartogram-water-outline', 'line-width', E.water.strokeWidth);
+        } catch (e) {}
+      }
+
+      if (map.getLayer('cartogram-highway-casing')) {
+        const showCasing = E.highways.visible && E.highways.cased;
+        map.setLayoutProperty('cartogram-highway-casing', 'visibility', showCasing ? 'visible' : 'none');
+        map.setPaintProperty('cartogram-highway-casing', 'line-color', E.highways.casingColor);
+        map.setPaintProperty('cartogram-highway-casing', 'line-width', [
+          'interpolate', ['linear'], ['zoom'],
+          6, (E.highways.width + 1.4) * 0.45,
+          12, E.highways.width + 1.8,
+          16, (E.highways.width + 1.8) * 2.2
+        ]);
+      }
+
+      if (map.getLayer('cartogram-highway-fill')) {
+        map.setLayoutProperty('cartogram-highway-fill', 'visibility', E.highways.visible ? 'visible' : 'none');
+        map.setPaintProperty('cartogram-highway-fill', 'line-color', E.highways.color);
+        map.setPaintProperty('cartogram-highway-fill', 'line-width', [
+          'interpolate', ['linear'], ['zoom'],
+          6, E.highways.width * 0.4,
+          12, E.highways.width,
+          16, E.highways.width * 2.1
+        ]);
+      }
+
+      if (map.getLayer('cartogram-secondary-casing')) {
+        const showSecCasing = E.secondaryRoads.visible && E.secondaryRoads.cased;
+        map.setLayoutProperty('cartogram-secondary-casing', 'visibility', showSecCasing ? 'visible' : 'none');
+        map.setPaintProperty('cartogram-secondary-casing', 'line-color', E.secondaryRoads.casingColor);
+        map.setPaintProperty('cartogram-secondary-casing', 'line-width', [
+          'interpolate', ['linear'], ['zoom'],
+          8, (E.secondaryRoads.width + 1.2) * 0.45,
+          13, E.secondaryRoads.width + 1.5,
+          16, (E.secondaryRoads.width + 1.5) * 2.1
+        ]);
+      }
+
+      if (map.getLayer('cartogram-secondary-fill')) {
+        map.setLayoutProperty('cartogram-secondary-fill', 'visibility', E.secondaryRoads.visible ? 'visible' : 'none');
+        map.setPaintProperty('cartogram-secondary-fill', 'line-color', E.secondaryRoads.color);
+        map.setPaintProperty('cartogram-secondary-fill', 'line-width', [
+          'interpolate', ['linear'], ['zoom'],
+          8, E.secondaryRoads.width * 0.4,
+          13, E.secondaryRoads.width,
+          16, E.secondaryRoads.width * 2.0
+        ]);
+      }
+
+      if (map.getLayer('cartogram-street-casing')) {
+        const showStrCasing = E.streets.visible && E.streets.cased;
+        map.setLayoutProperty('cartogram-street-casing', 'visibility', showStrCasing ? 'visible' : 'none');
+        map.setPaintProperty('cartogram-street-casing', 'line-color', E.streets.casingColor);
+        map.setPaintProperty('cartogram-street-casing', 'line-width', [
+          'interpolate', ['linear'], ['zoom'],
+          11, (E.streets.width + 1.0) * 0.45,
+          14, E.streets.width + 1.3,
+          17, (E.streets.width + 1.3) * 2.2
+        ]);
+      }
+
+      if (map.getLayer('cartogram-street-fill')) {
+        map.setLayoutProperty('cartogram-street-fill', 'visibility', E.streets.visible ? 'visible' : 'none');
+        map.setPaintProperty('cartogram-street-fill', 'line-color', E.streets.color);
+        map.setPaintProperty('cartogram-street-fill', 'line-width', [
+          'interpolate', ['linear'], ['zoom'],
+          11, E.streets.width * 0.4,
+          14, E.streets.width,
+          17, E.streets.width * 2.1
+        ]);
+      }
+
+      if (map.getLayer('cartogram-paths-os')) {
+        map.setLayoutProperty('cartogram-paths-os', 'visibility', E.paths.visible ? 'visible' : 'none');
+        map.setPaintProperty('cartogram-paths-os', 'line-color', E.paths.color);
+        map.setPaintProperty('cartogram-paths-os', 'line-width', E.paths.width);
+      }
+
+      for (const layer of style.layers) {
+        const id = layer.id.toLowerCase();
+        const type = layer.type;
+        const srcLayer = (layer['source-layer'] || '').toLowerCase();
+
+        if (id.startsWith('cartogram-')) {
+          if (id === 'cartogram-rail-base') {
+            map.setLayoutProperty(layer.id, 'visibility', E.railways.visible ? 'visible' : 'none');
+            map.setPaintProperty(layer.id, 'line-color', E.railways.color);
+            map.setPaintProperty(layer.id, 'line-width', [
+              'interpolate', ['linear'], ['zoom'],
+              8, E.railways.width * 0.5,
+              13, E.railways.width,
+              16, E.railways.width * 1.6
+            ]);
+          } else if (id === 'cartogram-rail-ties') {
+            map.setLayoutProperty(layer.id, 'visibility', (E.railways.visible && E.railways.dashedTies) ? 'visible' : 'none');
+            map.setPaintProperty(layer.id, 'line-opacity', E.railways.dashedTies ? 0.88 : 0);
+          } else if (id === 'cartogram-3d-buildings') {
+            map.setLayoutProperty(layer.id, 'visibility', (E.buildings.visible && E.buildings.extrude3d) ? 'visible' : 'none');
+            map.setPaintProperty(layer.id, 'fill-extrusion-color', E.buildings.color);
+          }
+          continue;
+        }
+
+        if (type === 'background') {
+          try {
+            map.setPaintProperty(layer.id, 'background-color', E.land.color);
+          } catch (e) {}
+          continue;
+        }
+
+        if (srcLayer === 'water' || srcLayer === 'waterway' || id.includes('water')) {
+          if (type === 'symbol') {
+            map.setLayoutProperty(layer.id, 'visibility', E.placeLabels.visible ? 'visible' : 'none');
+            try { map.setPaintProperty(layer.id, 'text-opacity', useCustomText ? 0 : 1); } catch (e) {}
+          } else {
+            map.setLayoutProperty(layer.id, 'visibility', E.water.visible ? 'visible' : 'none');
+            if (type === 'fill') {
+              try { map.setPaintProperty(layer.id, 'fill-color', E.water.color); } catch (e) {}
+            } else if (type === 'line') {
+              try { map.setPaintProperty(layer.id, 'line-color', E.water.strokeColor || E.water.color); } catch (e) {}
+            }
+          }
+          continue;
+        }
+
+        if (srcLayer === 'park' || id.includes('park') || id.includes('wood') || id.includes('forest') || id.includes('grass') || id.includes('green') || id.includes('landcover_wood') || id.includes('landcover_grass')) {
+          if (type === 'fill') {
+            map.setLayoutProperty(layer.id, 'visibility', E.parks.visible ? 'visible' : 'none');
+            try {
+              map.setPaintProperty(layer.id, 'fill-color', E.parks.color);
+              map.setPaintProperty(layer.id, 'fill-opacity', E.parks.opacity || 0.85);
+            } catch (e) {}
+            continue;
+          }
+        }
+
+        if (srcLayer === 'building' || id.includes('building')) {
+          map.setLayoutProperty(layer.id, 'visibility', E.buildings.visible ? 'visible' : 'none');
+          if (type === 'fill') {
+            try { map.setPaintProperty(layer.id, 'fill-color', E.buildings.color); } catch (e) {}
+          } else if (type === 'line') {
+            try { map.setPaintProperty(layer.id, 'line-color', E.buildings.color); } catch (e) {}
+          }
+          continue;
+        }
+
+        if (id.includes('rail') || id.includes('transit') || id.includes('subway') || id.includes('tram')) {
+          map.setLayoutProperty(layer.id, 'visibility', 'none');
+          continue;
+        }
+
+        if (srcLayer === 'boundary' || id.includes('boundary') || id.includes('admin') || id.includes('border')) {
+          map.setLayoutProperty(layer.id, 'visibility', E.borders.visible ? 'visible' : 'none');
+          if (type === 'line') {
+            try {
+              map.setPaintProperty(layer.id, 'line-color', E.borders.color);
+              map.setPaintProperty(layer.id, 'line-width', E.borders.width);
+            } catch (e) {}
+          }
+          continue;
+        }
+
+        if (srcLayer === 'transportation' && type === 'line') {
+          map.setLayoutProperty(layer.id, 'visibility', 'none');
+          continue;
+        }
+
+        if (type === 'symbol') {
+          if (srcLayer === 'poi' || id.includes('poi')) {
+            map.setLayoutProperty(layer.id, 'visibility', E.pois.visible ? 'visible' : 'none');
+            try {
+              map.setPaintProperty(layer.id, 'text-opacity', useCustomText ? 0 : 1);
+              map.setPaintProperty(layer.id, 'icon-opacity', useCustomText ? 0 : 1);
+              map.setPaintProperty(layer.id, 'text-color', E.pois.color);
+            } catch (e) {}
+          } else if (srcLayer === 'transportation_name' || id.includes('road') || id.includes('highway') || id.includes('transportation')) {
+            map.setLayoutProperty(layer.id, 'visibility', E.streetLabels.visible ? 'visible' : 'none');
+            try {
+              map.setPaintProperty(layer.id, 'text-opacity', useCustomText ? 0 : 1);
+              map.setPaintProperty(layer.id, 'icon-opacity', useCustomText ? 0 : 1);
+              map.setPaintProperty(layer.id, 'text-color', E.streetLabels.color);
+              map.setPaintProperty(layer.id, 'text-halo-color', state.mapFonts.haloColor);
+            } catch (e) {}
+          } else {
+            map.setLayoutProperty(layer.id, 'visibility', E.placeLabels.visible ? 'visible' : 'none');
+            try {
+              map.setPaintProperty(layer.id, 'text-opacity', useCustomText ? 0 : 1);
+              map.setPaintProperty(layer.id, 'icon-opacity', useCustomText ? 0 : 1);
+              map.setPaintProperty(layer.id, 'text-color', E.placeLabels.color);
+              map.setPaintProperty(layer.id, 'text-halo-color', state.mapFonts.haloColor);
+            } catch (e) {}
+          }
+          continue;
+        }
+
+        if (type === 'fill' && (id.includes('landuse') || id.includes('landcover'))) {
+          try {
+            map.setPaintProperty(layer.id, 'fill-color', E.land.color);
+          } catch (e) {}
+        }
+      }
+
+      scheduleCustomOverlayRender();
+    }
+
+    function scheduleCustomOverlayRender() {
+      if (labelRenderRaf) cancelAnimationFrame(labelRenderRaf);
+      labelRenderRaf = requestAnimationFrame(() => {
+        renderTopographicContoursCanvas();
+        renderCustomMapLabelsCanvas();
+      });
+    }
+
+    function pseudoElevationAtLngLat(lng, lat) {
+      const x = lng * 68.0;
+      const y = lat * 68.0;
+      const e1 = Math.sin(x * 1.15 + Math.cos(y * 1.25)) * 110;
+      const e2 = Math.cos(x * 2.8 - Math.sin(y * 2.6)) * 55;
+      const e3 = Math.sin((x + y) * 5.4) * 24;
+      const e4 = Math.cos((x - y) * 9.2) * 10;
+      return Math.max(5, Math.round(140 + e1 + e2 + e3 + e4));
+    }
+
+    function renderTopographicContoursCanvas() {
+      const canvas = document.getElementById('contourOverlayCanvas');
+      const mask = document.getElementById('mapMaskContainer');
+      if (!canvas || !mask || !map) return;
+
+      const w = mask.clientWidth;
+      const h = mask.clientHeight;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
+
+      if (!state.terrain.contours) {
+        ctx.restore();
+        return;
+      }
+
+      const stepPx = 18;
+      const cols = Math.ceil(w / stepPx) + 1;
+      const rows = Math.ceil(h / stepPx) + 1;
+      const grid = new Array(rows);
+
+      let minEl = Infinity;
+      let maxEl = -Infinity;
+      let peakVal = -Infinity;
+      let peakPos = null;
+
+      for (let r = 0; r < rows; r++) {
+        grid[r] = new Float32Array(cols);
+        for (let c = 0; c < cols; c++) {
+          const px = c * stepPx;
+          const py = r * stepPx;
+          const ll = map.unproject([px, py]);
+          const val = pseudoElevationAtLngLat(ll.lng, ll.lat);
+          grid[r][c] = val;
+          if (val < minEl) minEl = val;
+          if (val > maxEl) maxEl = val;
+          if (r > 2 && r < rows - 3 && c > 2 && c < cols - 3 && val > peakVal) {
+            peakVal = val;
+            peakPos = { x: px, y: py, val: Math.round(val) };
+          }
+        }
+      }
+
+      const interval = Math.max(5, state.terrain.contourIntervalM || 10);
+      const startLevel = Math.ceil(minEl / interval) * interval;
+
+      ctx.strokeStyle = state.terrain.contourColor;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      const interp = (v1, v2, t) => {
+        if (Math.abs(v2 - v1) < 0.0001) return 0.5;
+        return (t - v1) / (v2 - v1);
+      };
+
+      for (let level = startLevel; level <= maxEl; level += interval) {
+        const isIndex = (level % (interval * 5)) === 0;
+        ctx.lineWidth = isIndex ? 1.35 : 0.7;
+        ctx.globalAlpha = isIndex ? Math.min(1, state.terrain.contourOpacity + 0.2) : state.terrain.contourOpacity;
+        ctx.beginPath();
+
+        let labelPos = null;
+
+        for (let r = 0; r < rows - 1; r++) {
+          for (let c = 0; c < cols - 1; c++) {
+            const z0 = grid[r][c];
+            const z1 = grid[r][c + 1];
+            const z2 = grid[r + 1][c + 1];
+            const z3 = grid[r + 1][c];
+
+            let maskBits = 0;
+            if (z0 >= level) maskBits |= 1;
+            if (z1 >= level) maskBits |= 2;
+            if (z2 >= level) maskBits |= 4;
+            if (z3 >= level) maskBits |= 8;
+            if (maskBits === 0 || maskBits === 15) continue;
+
+            const x = c * stepPx;
+            const y = r * stepPx;
+
+            const top = [x + interp(z0, z1, level) * stepPx, y];
+            const right = [x + stepPx, y + interp(z1, z2, level) * stepPx];
+            const bottom = [x + interp(z3, z2, level) * stepPx, y + stepPx];
+            const left = [x, y + interp(z0, z3, level) * stepPx];
+
+            const drawSeg = (a, b) => {
+              ctx.moveTo(a[0], a[1]);
+              ctx.lineTo(b[0], b[1]);
+              if (isIndex && !labelPos && r > 4 && r < rows - 5 && c > 4 && c < cols - 5 && (r + c) % 19 === 0) {
+                labelPos = { x: (a[0] + b[0]) * 0.5, y: (a[1] + b[1]) * 0.5, text: `${level}` };
+              }
+            };
+
+            if (maskBits === 1 || maskBits === 14) drawSeg(left, top);
+            else if (maskBits === 2 || maskBits === 13) drawSeg(top, right);
+            else if (maskBits === 4 || maskBits === 11) drawSeg(right, bottom);
+            else if (maskBits === 8 || maskBits === 7) drawSeg(bottom, left);
+            else if (maskBits === 3 || maskBits === 12) drawSeg(left, right);
+            else if (maskBits === 6 || maskBits === 9) drawSeg(top, bottom);
+            else if (maskBits === 5) { drawSeg(left, bottom); drawSeg(top, right); }
+            else if (maskBits === 10) { drawSeg(left, top); drawSeg(bottom, right); }
+          }
+        }
+        ctx.stroke();
+
+        if (isIndex && labelPos) {
+          ctx.save();
+          ctx.globalAlpha = 0.9;
+          ctx.font = `600 9px "JetBrains Mono", monospace`;
+          ctx.fillStyle = state.terrain.contourColor;
+          ctx.strokeStyle = state.elements.land.color;
+          ctx.lineWidth = 3;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.strokeText(labelPos.text, labelPos.x, labelPos.y);
+          ctx.fillText(labelPos.text, labelPos.x, labelPos.y);
+          ctx.restore();
+        }
+      }
+
+      if (state.terrain.showSpotHeights && peakPos) {
+        ctx.save();
+        ctx.globalAlpha = 0.95;
+        ctx.fillStyle = state.elements.placeLabels.color;
+        ctx.strokeStyle = state.mapFonts.haloColor;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(peakPos.x, peakPos.y - 5);
+        ctx.lineTo(peakPos.x - 4.5, peakPos.y + 3.5);
+        ctx.lineTo(peakPos.x + 4.5, peakPos.y + 3.5);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.fill();
+
+        const unitSuffix = state.titleAndKey.scaleUnit === 'imperial'
+          ? `${Math.round(peakPos.val * 3.28084)} ft`
+          : `${peakPos.val}m`;
+        ctx.font = `700 10px "JetBrains Mono", monospace`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.strokeText(unitSuffix, peakPos.x + 7, peakPos.y);
+        ctx.fillText(unitSuffix, peakPos.x + 7, peakPos.y);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    function renderCustomMapLabelsCanvas() {
+      const canvas = document.getElementById('customMapLabelsCanvas');
+      const mask = document.getElementById('mapMaskContainer');
+      if (!canvas || !mask || !map || !mapStyleLoaded) return;
+
+      const w = mask.clientWidth;
+      const h = mask.clientHeight;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+      }
+
+      const ctx = canvas.getContext('2d');
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
+
+      if (!state.mapFonts.useCustomEngine) {
+        ctx.restore();
+        return;
+      }
+
+      const MF = state.mapFonts;
+      const E = state.elements;
+      const placedBoxes = [];
+
+      const boxesOverlap = (a, b) => {
+        return !(a.x2 < b.x1 || a.x1 > b.x2 || a.y2 < b.y1 || a.y1 > b.y2);
+      };
+
+      const tryRegisterBox = (box) => {
+        if (box.x1 < 6 || box.y1 < 6 || box.x2 > w - 6 || box.y2 > h - 6) return false;
+        for (const existing of placedBoxes) {
+          if (boxesOverlap(box, existing)) return false;
+        }
+        placedBoxes.push(box);
+        return true;
+      };
+
+      const densityLimit = MF.labelDensity === 'high' ? 85 : (MF.labelDensity === 'low' ? 24 : 48);
+      let renderedFeatures = [];
+      try {
+        renderedFeatures = map.queryRenderedFeatures();
+      } catch (e) {}
+
+      if (E.railways.visible && E.railways.showStationCircles) {
+        const seenStations = new Set();
+        for (const f of renderedFeatures) {
+          const props = f.properties || {};
+          const cls = (props.class || props.subclass || '').toLowerCase();
+          if (cls === 'railway' || cls === 'station' || cls === 'subway' || cls === 'halt') {
+            if (f.geometry && f.geometry.type === 'Point') {
+              const pt = map.project(f.geometry.coordinates);
+              const key = `${Math.round(pt.x / 22)},${Math.round(pt.y / 22)}`;
+              if (!seenStations.has(key) && pt.x > 10 && pt.x < w - 10 && pt.y > 10 && pt.y < h - 10) {
+                seenStations.add(key);
+                ctx.save();
+                ctx.fillStyle = '#e11d48';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.8;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+              }
+            }
+          }
+        }
+      }
+
+      const placeCandidates = [];
+      const waterParkCandidates = [];
+      const roadCandidates = [];
+      const seenNames = new Set();
+
+      for (const f of renderedFeatures) {
+        if (!f.geometry || !f.properties) continue;
+        const p = f.properties;
+        const rawName = p['name:en'] || p.name_en || p.name || p.ref;
+        if (!rawName || typeof rawName !== 'string') continue;
+
+        const srcLayer = (f.sourceLayer || '').toLowerCase();
+        const lId = (f.layer && f.layer.id ? f.layer.id : '').toLowerCase();
+        const cls = (p.class || p.subclass || '').toLowerCase();
+
+        if (srcLayer === 'place' || lId.includes('place') || ['city', 'town', 'village', 'suburb', 'neighbourhood', 'hamlet', 'quarter', 'island'].includes(cls)) {
+          if (!E.placeLabels.visible) continue;
+          if (seenNames.has('pl:' + rawName)) continue;
+          const coords = f.geometry.type === 'Point' ? f.geometry.coordinates : null;
+          if (!coords) continue;
+          seenNames.add('pl:' + rawName);
+          const rank = p.rank || (cls === 'city' ? 1 : cls === 'town' ? 3 : cls === 'suburb' ? 5 : 7);
+          placeCandidates.push({ name: rawName, coords, cls, rank });
+        } else if (srcLayer === 'water_name' || srcLayer === 'park' || lId.includes('water') || lId.includes('park') || ['lake', 'river', 'sea', 'ocean', 'park', 'nature_reserve', 'wood', 'peak'].includes(cls)) {
+          if (!E.placeLabels.visible) continue;
+          if (seenNames.has('wp:' + rawName)) continue;
+          let coords = null;
+          if (f.geometry.type === 'Point') coords = f.geometry.coordinates;
+          else if (f.geometry.type === 'LineString' && f.geometry.coordinates.length > 0) {
+            coords = f.geometry.coordinates[Math.floor(f.geometry.coordinates.length / 2)];
+          }
+          if (!coords) continue;
+          seenNames.add('wp:' + rawName);
+          const isWater = srcLayer.includes('water') || lId.includes('water') || ['lake', 'river', 'sea', 'bay'].includes(cls);
+          waterParkCandidates.push({ name: rawName, coords, isWater });
+        } else if (srcLayer === 'transportation_name' || srcLayer === 'transportation' || lId.includes('road') || lId.includes('transportation')) {
+          if (!E.streetLabels.visible) continue;
+          const refCode = p.ref ? String(p.ref).split(';')[0].trim() : '';
+          const dedupKey = 'rd:' + (rawName || refCode);
+          if (seenNames.has(dedupKey)) continue;
+          let coords = null;
+          let angle = 0;
+          if (f.geometry.type === 'LineString' && f.geometry.coordinates.length >= 2) {
+            const pts = f.geometry.coordinates;
+            const mid = Math.floor(pts.length / 2);
+            coords = pts[mid];
+            const pA = map.project(pts[Math.max(0, mid - 1)]);
+            const pB = map.project(pts[Math.min(pts.length - 1, mid + 1)]);
+            angle = Math.atan2(pB.y - pA.y, pB.x - pA.x);
+            if (angle > Math.PI / 2) angle -= Math.PI;
+            if (angle < -Math.PI / 2) angle += Math.PI;
+          } else if (f.geometry.type === 'Point') {
+            coords = f.geometry.coordinates;
+          }
+          if (!coords) continue;
+          seenNames.add(dedupKey);
+          roadCandidates.push({ name: rawName, ref: refCode, coords, angle, cls });
+        }
+      }
+
+      placeCandidates.sort((a, b) => a.rank - b.rank);
+
+      const drawTrackedText = (text, x, y, trackingPx, stroke) => {
+        if (!trackingPx || Math.abs(trackingPx) < 0.2) {
+          if (stroke) ctx.strokeText(text, x, y);
+          else ctx.fillText(text, x, y);
+          return;
+        }
+        const chars = Array.from(text);
+        let totalW = 0;
+        const widths = chars.map(ch => {
+          const cw = ctx.measureText(ch).width;
+          totalW += cw;
+          return cw;
+        });
+        totalW += trackingPx * (chars.length - 1);
+        let curX = x - totalW * 0.5;
+        ctx.textAlign = 'left';
+        for (let i = 0; i < chars.length; i++) {
+          if (stroke) ctx.strokeText(chars[i], curX, y);
+          else ctx.fillText(chars[i], curX, y);
+          curX += widths[i] + trackingPx;
+        }
+        ctx.textAlign = 'center';
+      };
+
+      let count = 0;
+      for (const pl of placeCandidates) {
+        if (count >= densityLimit) break;
+        const pt = map.project(pl.coords);
+        const baseSize = pl.cls === 'city' ? 17 : pl.cls === 'town' ? 14.5 : pl.cls === 'suburb' ? 12.5 : 11.5;
+        const fontSize = Math.round(baseSize * MF.placeSizeScale);
+        const displayStr = MF.placeUppercase ? pl.name.toUpperCase() : pl.name;
+
+        ctx.font = `${MF.placeWeight} ${fontSize}px "${MF.placeFont}", serif`;
+        const metrics = ctx.measureText(displayStr);
+        const textW = metrics.width + Math.abs(MF.placeTracking) * displayStr.length;
+        const textH = fontSize * 1.25;
+
+        const box = {
+          x1: pt.x - textW * 0.5 - 6,
+          y1: pt.y - textH * 0.5 - 4,
+          x2: pt.x + textW * 0.5 + 6,
+          y2: pt.y + textH * 0.5 + 4
+        };
+
+        if (!tryRegisterBox(box)) continue;
+        count++;
+
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        if (MF.haloWidth > 0) {
+          ctx.strokeStyle = MF.haloColor;
+          ctx.lineWidth = MF.haloWidth;
+          ctx.lineJoin = 'round';
+          drawTrackedText(displayStr, pt.x, pt.y, MF.placeTracking, true);
+        }
+        ctx.fillStyle = E.placeLabels.color;
+        drawTrackedText(displayStr, pt.x, pt.y, MF.placeTracking, false);
+        ctx.restore();
+      }
+
+      for (const wp of waterParkCandidates.slice(0, 22)) {
+        const pt = map.project(wp.coords);
+        const fontSize = Math.round(12 * MF.placeSizeScale);
+        const stylePrefix = MF.waterItalic ? 'italic 600' : '600';
+        ctx.font = `${stylePrefix} ${fontSize}px "${MF.waterFont}", Georgia, serif`;
+        const textW = ctx.measureText(wp.name).width;
+        const box = {
+          x1: pt.x - textW * 0.5 - 4,
+          y1: pt.y - 8,
+          x2: pt.x + textW * 0.5 + 4,
+          y2: pt.y + 8
+        };
+        if (!tryRegisterBox(box)) continue;
+
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        if (MF.haloWidth > 0) {
+          ctx.strokeStyle = MF.haloColor;
+          ctx.lineWidth = MF.haloWidth;
+          ctx.lineJoin = 'round';
+          ctx.strokeText(wp.name, pt.x, pt.y);
+        }
+        ctx.fillStyle = wp.isWater ? (COLOR_THEMES[state.activeTheme]?.waterLabels || '#0369a1') : '#15803d';
+        ctx.fillText(wp.name, pt.x, pt.y);
+        ctx.restore();
+      }
+
+      for (const rd of roadCandidates) {
+        if (count >= densityLimit + 25) break;
+        const pt = map.project(rd.coords);
+
+        const isShieldCandidate = MF.showRoadShields && (rd.ref || /^[ABM]\d+|I-\d+|US\s?\d+/i.test(rd.name));
+        if (isShieldCandidate) {
+          const badgeText = (rd.ref || rd.name).toUpperCase().slice(0, 6);
+          ctx.font = `700 9.5px "${MF.streetFont}", sans-serif`;
+          const bw = Math.max(24, ctx.measureText(badgeText).width + 10);
+          const bh = 15;
+          const box = { x1: pt.x - bw * 0.5 - 4, y1: pt.y - bh * 0.5 - 4, x2: pt.x + bw * 0.5 + 4, y2: pt.y + bh * 0.5 + 4 };
+          if (!tryRegisterBox(box)) continue;
+          count++;
+
+          const isPrimary = badgeText.startsWith('M') || badgeText.startsWith('A') || badgeText.startsWith('I');
+          ctx.save();
+          ctx.fillStyle = isPrimary ? E.highways.color : E.secondaryRoads.color;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(pt.x - bw * 0.5, pt.y - bh * 0.5, bw, bh, 4);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(badgeText, pt.x, pt.y + 0.5);
+          ctx.restore();
+          continue;
+        }
+
+        const fontSize = Math.round(10.5 * MF.streetSizeScale);
+        const strText = MF.streetUppercase ? rd.name.toUpperCase() : rd.name;
+        ctx.font = `600 ${fontSize}px "${MF.streetFont}", sans-serif`;
+        const tw = ctx.measureText(strText).width;
+        const box = {
+          x1: pt.x - tw * 0.5 - 5,
+          y1: pt.y - 8,
+          x2: pt.x + tw * 0.5 + 5,
+          y2: pt.y + 8
+        };
+        if (!tryRegisterBox(box)) continue;
+        count++;
+
+        ctx.save();
+        ctx.translate(pt.x, pt.y);
+        ctx.rotate(rd.angle || 0);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        if (MF.haloWidth > 0) {
+          ctx.strokeStyle = MF.haloColor;
+          ctx.lineWidth = Math.max(2, MF.haloWidth * 0.85);
+          ctx.lineJoin = 'round';
+          ctx.strokeText(strText, 0, 0);
+        }
+        ctx.fillStyle = E.streetLabels.color;
+        ctx.fillText(strText, 0, 0);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    function applyColorTheme(themeKey) {
+      const t = COLOR_THEMES[themeKey];
+      if (!t) return;
+      state.activeTheme = themeKey;
+      state.frame.paperBg = t.paperBg;
+      state.frame.borderColor = t.borderStroke;
+      state.titleAndKey.textColor = t.textPrimary;
+
+      state.elements.land.color = t.land;
+      state.elements.water.color = t.water;
+      state.elements.water.strokeColor = t.waterStroke || t.water;
+      state.elements.parks.color = t.parks;
+      state.elements.buildings.color = t.buildings;
+      state.elements.railways.color = t.railways;
+      state.elements.highways.color = t.highways;
+      state.elements.highways.casingColor = t.highwayCasing || '#1e293b';
+      state.elements.secondaryRoads.color = t.secondaryRoads || t.highways;
+      state.elements.secondaryRoads.casingColor = t.secondaryCasing || '#334155';
+      state.elements.streets.color = t.streets;
+      state.elements.streets.casingColor = t.streetCasing || '#64748b';
+      state.elements.paths.color = t.paths;
+      state.elements.borders.color = t.borders;
+      state.elements.placeLabels.color = t.placeLabels;
+      state.elements.streetLabels.color = t.streetLabels;
+      state.elements.pois.color = t.pois;
+
+      state.terrain.contourColor = t.contours || '#d97706';
+      state.terrain.contours = !!t.enableContours;
+      state.terrain.hillshade = !!t.enableHillshade;
+      state.frame.showCoordGrid = !!t.enableGrid;
+      state.frame.gridColor = t.gridColor || '#0284c7';
+
+      state.mapFonts.haloColor = (themeKey === 'midnight' || themeKey === 'blueprint') ? '#0f172a' : '#ffffff';
+
+      applyMapElementStyles();
+      updateAllPosterOverlays();
+      renderSidebarContent();
+      showToast(`Applied ${t.name} theme`);
+    }
+
+    function computeScaleMetrics() {
+      const lat = state.place.lat;
+      const zoom = state.place.zoom;
+      const metersPerPixel = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
+      const targetPx = 90;
+      const rawMeters = metersPerPixel * targetPx;
+
+      const approxRatio = Math.round((metersPerPixel * 96 * 39.37) / 500) * 500;
+      const ratioLabel = `1:${Math.max(2500, approxRatio).toLocaleString()}`;
+
+      if (state.titleAndKey.scaleUnit === 'imperial') {
+        const rawFeet = rawMeters * 3.28084;
+        const stepsFt = [100, 200, 500, 1000, 2000, 2640, 5280, 10560, 26400, 52800, 105600];
+        let niceFt = stepsFt[0];
+        for (const s of stepsFt) {
+          if (s <= rawFeet * 1.35) niceFt = s;
+        }
+        const barPx = Math.max(48, Math.min(140, (niceFt / 3.28084) / metersPerPixel));
+        const label = niceFt >= 5280 ? `${niceFt / 5280} mi` : `${niceFt} ft`;
+        return { barPx, label, ratioLabel };
+      } else {
+        const stepsM = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000];
+        let niceM = stepsM[0];
+        for (const s of stepsM) {
+          if (s <= rawMeters * 1.35) niceM = s;
+        }
+        const barPx = Math.max(48, Math.min(140, niceM / metersPerPixel));
+        const label = niceM >= 1000 ? `${niceM / 1000} km` : `${niceM} m`;
+        return { barPx, label, ratioLabel };
+      }
+    }
+
+    function formatLatLngString(lat, lng) {
+      const ns = lat >= 0 ? 'N' : 'S';
+      const ew = lng >= 0 ? 'E' : 'W';
+      return `${Math.abs(lat).toFixed(4)}° ${ns}, ${Math.abs(lng).toFixed(4)}° ${ew}`;
+    }
+
+    function updateLiveCoordinatesAndScale() {
+      const coordText = formatLatLngString(state.place.lat, state.place.lng);
+      const showCoords = state.titleAndKey.showCoords;
+
+      const topCoords = document.getElementById('topHeaderCoords');
+      const botCoords = document.getElementById('bottomEditorialCoords');
+      const fltCoords = document.getElementById('floatingCoordsText');
+
+      if (topCoords) {
+        topCoords.textContent = coordText;
+        topCoords.style.display = showCoords ? 'block' : 'none';
+      }
+      if (botCoords) {
+        botCoords.textContent = coordText;
+        botCoords.style.display = showCoords ? 'block' : 'none';
+      }
+      if (fltCoords) {
+        fltCoords.textContent = coordText;
+        fltCoords.style.display = showCoords ? 'block' : 'none';
+      }
+
+      const scaleOverlay = document.getElementById('scaleBarOverlay');
+      if (scaleOverlay) {
+        scaleOverlay.style.display = state.titleAndKey.showScaleBar ? 'flex' : 'none';
+        const metrics = computeScaleMetrics();
+        const distEl = document.getElementById('scaleBarDistanceText');
+        const ratioEl = document.getElementById('scaleRatioText');
+        const barEl = document.getElementById('scaleBarGraphic');
+        if (distEl) distEl.textContent = metrics.label;
+        if (ratioEl) ratioEl.textContent = metrics.ratioLabel;
+        if (barEl) barEl.style.width = `${Math.round(metrics.barPx)}px`;
+      }
+
+      const compassEl = document.getElementById('compassOverlay');
+      const needleEl = document.getElementById('compassNeedleIcon');
+      const magLbl = document.getElementById('compassMagLabel');
+      if (compassEl) {
+        compassEl.style.display = state.titleAndKey.showCompass ? 'flex' : 'none';
+        if (needleEl) {
+          needleEl.style.transform = `rotate(${-state.place.bearing}deg)`;
+        }
+        if (magLbl) {
+          magLbl.classList.toggle('hidden', !state.titleAndKey.showMagneticNorth);
+        }
+      }
+    }
+
+    function getShapeClipPathCss(shape) {
+      if (shape === 'circle') return 'circle(48% at 50% 50%)';
+      if (shape === 'arch') return 'inset(0% 0% 0% 0% round 999px 999px 12px 12px)';
+      if (shape === 'pill') return 'inset(0% 0% 0% 0% round 999px)';
+      if (shape === 'rounded') return 'inset(0% 0% 0% 0% round 28px)';
+      if (shape === 'hexagon') return 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
+      return 'none';
+    }
+
+    function updateAllPosterOverlays() {
+      const viewport = document.getElementById('workspaceViewport');
+      const paper = document.getElementById('posterPaperFrame');
+      const mask = document.getElementById('mapMaskContainer');
+      if (!viewport || !paper || !mask) return;
+
+      const aspect = state.frame.widthIn / state.frame.heightIn;
+      const availW = viewport.clientWidth - 48;
+      const availH = viewport.clientHeight - 64;
+
+      let posterH = availH;
+      let posterW = posterH * aspect;
+      if (posterW > availW) {
+        posterW = availW;
+        posterH = posterW / aspect;
+      }
+
+      posterW = Math.max(260, Math.round(posterW));
+      posterH = Math.max(260, Math.round(posterH));
+
+      paper.style.width = `${posterW}px`;
+      paper.style.height = `${posterH}px`;
+      paper.style.backgroundColor = state.frame.paperBg;
+      paper.style.color = state.titleAndKey.textColor;
+
+      const isFullBleed = state.frame.shape === 'fullbleed';
+      const pad = isFullBleed ? 0 : state.frame.marginPx;
+      paper.style.padding = `${pad}px`;
+
+      mask.style.clipPath = getShapeClipPathCss(state.frame.shape);
+      if (state.frame.showBorder && !isFullBleed && state.frame.shape !== 'circle' && state.frame.shape !== 'hexagon') {
+        mask.style.border = `${state.frame.borderWidth}px solid ${state.frame.borderColor}`;
+      } else {
+        mask.style.border = 'none';
+      }
+
+      if (state.frame.shape === 'rounded') mask.style.borderRadius = '28px';
+      else if (state.frame.shape === 'pill') mask.style.borderRadius = '999px';
+      else if (state.frame.shape === 'arch') mask.style.borderRadius = '999px 999px 12px 12px';
+      else mask.style.borderRadius = '0px';
+
+      const fontClassMap = {
+        serif: "'Fraunces', Georgia, serif",
+        sans: "'Plus Jakarta Sans', sans-serif",
+        mono: "'JetBrains Mono', monospace",
+        cinzel: "'Cinzel', Georgia, serif"
+      };
+      const chosenFont = fontClassMap[state.titleAndKey.fontFamily] || fontClassMap.serif;
+
+      const topBlock = document.getElementById('topHeaderBlock');
+      const botBlock = document.getElementById('bottomEditorialBlock');
+      const fltBadge = document.getElementById('floatingTitleBadge');
+
+      topBlock.classList.add('hidden');
+      botBlock.classList.add('hidden');
+      fltBadge.classList.add('hidden');
+
+      if (state.titleAndKey.showTitle) {
+        if (state.titleAndKey.layout === 'top' && !isFullBleed) {
+          topBlock.classList.remove('hidden');
+        } else if (state.titleAndKey.layout === 'bottom' && !isFullBleed) {
+          botBlock.classList.remove('hidden');
+        } else {
+          fltBadge.classList.remove('hidden');
+          fltBadge.style.backgroundColor = state.frame.paperBg;
+          fltBadge.style.borderColor = state.frame.borderColor;
+        }
+      }
+
+      ['topHeaderTitle', 'bottomEditorialTitle', 'floatingTitleText'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.textContent = state.place.title;
+          el.style.fontFamily = chosenFont;
+        }
+      });
+
+      ['topHeaderSubtitle', 'bottomEditorialSubtitle', 'floatingSubtitleText'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = state.place.subtitle;
+      });
+
+      const topSeries = document.getElementById('topHeaderSeries');
+      const topSheet = document.getElementById('topHeaderSheetCode');
+      if (topSeries) topSeries.textContent = state.place.seriesTitle;
+      if (topSheet) topSheet.textContent = state.place.sheetCode;
+
+      renderCoordGridOverlay();
+      renderLegendKeyOverlay();
+      updateLiveCoordinatesAndScale();
+
+      if (map) {
+        setTimeout(() => {
+          map.resize();
+          scheduleCustomOverlayRender();
+        }, 30);
+      }
+    }
+
+    function renderCoordGridOverlay() {
+      const svg = document.getElementById('coordGridOverlay');
+      const mask = document.getElementById('mapMaskContainer');
+      if (!svg || !mask) return;
+
+      const w = mask.clientWidth || 500;
+      const h = mask.clientHeight || 650;
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+      let svgHtml = '';
+
+      if (state.frame.showCoordGrid) {
+        const step = Math.max(45, state.frame.gridSpacingPx || 85);
+        const col = state.frame.gridColor || '#0284c7';
+        const op = state.frame.gridOpacity || 0.35;
+        const dash = state.frame.gridStyle === 'dashed' ? 'stroke-dasharray="4 4"' : '';
+
+        const baseEasting = Math.floor(((state.place.lng + 180) * 100) % 90) + 10;
+        const baseNorthing = Math.floor(((state.place.lat + 90) * 100) % 90) + 10;
+
+        let idxX = 0;
+        for (let x = step; x < w - 12; x += step) {
+          svgHtml += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="${col}" stroke-opacity="${op}" stroke-width="1" ${dash} />`;
+          if (state.frame.showGridNumbers) {
+            const numStr = String((baseEasting + idxX) % 100).padStart(2, '0');
+            svgHtml += `
+              <rect x="${x - 10}" y="6" width="20" height="13" rx="3" fill="${state.frame.paperBg}" fill-opacity="0.88" />
+              <text x="${x}" y="15.5" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="700" text-anchor="middle" fill="${col}">${numStr}</text>
+            `;
+          }
+          idxX++;
+        }
+
+        let idxY = 0;
+        for (let y = step; y < h - 12; y += step) {
+          svgHtml += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="${col}" stroke-opacity="${op}" stroke-width="1" ${dash} />`;
+          if (state.frame.showGridNumbers) {
+            const numStr = String((baseNorthing + idxY) % 100).padStart(2, '0');
+            svgHtml += `
+              <rect x="6" y="${y - 6.5}" width="20" height="13" rx="3" fill="${state.frame.paperBg}" fill-opacity="0.88" />
+              <text x="16" y="${y + 3}" font-family="JetBrains Mono, monospace" font-size="9.5" font-weight="700" text-anchor="middle" fill="${col}">${numStr}</text>
+            `;
+          }
+          idxY++;
+        }
+      }
+
+      if (state.frame.showBorder && state.frame.borderStyle === 'surveyor' && state.frame.shape === 'rectangle') {
+        const seg = 36;
+        const bw = 5;
+        for (let x = 0; x < w; x += seg) {
+          const fill = (Math.floor(x / seg) % 2 === 0) ? state.frame.borderColor : state.frame.paperBg;
+          const sw = Math.min(seg, w - x);
+          svgHtml += `<rect x="${x}" y="0" width="${sw}" height="${bw}" fill="${fill}" stroke="${state.frame.borderColor}" stroke-width="0.6" />`;
+          svgHtml += `<rect x="${x}" y="${h - bw}" width="${sw}" height="${bw}" fill="${fill}" stroke="${state.frame.borderColor}" stroke-width="0.6" />`;
+        }
+        for (let y = 0; y < h; y += seg) {
+          const fill = (Math.floor(y / seg) % 2 === 0) ? state.frame.borderColor : state.frame.paperBg;
+          const sh = Math.min(seg, h - y);
+          svgHtml += `<rect x="0" y="${y}" width="${bw}" height="${sh}" fill="${fill}" stroke="${state.frame.borderColor}" stroke-width="0.6" />`;
+          svgHtml += `<rect x="${w - bw}" y="${y}" width="${bw}" height="${sh}" fill="${fill}" stroke="${state.frame.borderColor}" stroke-width="0.6" />`;
+        }
+      }
+
+      if (svgHtml) {
+        svg.classList.remove('hidden');
+        svg.innerHTML = svgHtml;
+      } else {
+        svg.classList.add('hidden');
+      }
+    }
+
+    function collectActiveLegendItems() {
+      const items = [];
+      const order = ['highways', 'secondaryRoads', 'streets', 'paths', 'railways', 'water', 'parks', 'buildings', 'borders'];
+      for (const k of order) {
+        const el = state.elements[k];
+        if (el && el.visible && el.inKey) {
+          let kind = 'fill';
+          if (k === 'highways' || k === 'secondaryRoads' || k === 'streets') kind = el.cased ? 'cased-road' : 'line';
+          else if (k === 'railways') kind = 'rail';
+          else if (k === 'paths') kind = 'dashed';
+          else if (k === 'borders') kind = 'line';
+
+          items.push({
+            id: k,
+            label: el.keyLabel || el.name,
+            color: el.color,
+            casingColor: el.casingColor || '#1e293b',
+            strokeColor: el.strokeColor,
+            kind
+          });
+        }
+      }
+      if (state.terrain.contours) {
+        items.push({
+          id: 'contours',
+          label: `Contours (${state.terrain.contourIntervalM}m V.I.)`,
+          color: state.terrain.contourColor,
+          kind: 'contour'
+        });
+      }
+      for (const route of state.drawing.routes) {
+        items.push({
+          id: route.id,
+          label: route.name,
+          color: route.color,
+          kind: route.style === 'train' ? 'rail' : (route.style === 'dashed' ? 'dashed' : 'line')
+        });
+      }
+      for (const zone of state.drawing.zones) {
+        items.push({
+          id: zone.id,
+          label: zone.name,
+          color: zone.color,
+          kind: 'zone'
+        });
+      }
+      if (state.drawing.pins.length > 0) {
+        items.push({
+          id: 'pins',
+          label: `Waypoints & Trig (${state.drawing.pins.length})`,
+          color: state.drawing.pins[0].color,
+          kind: 'pin'
+        });
+      }
+      for (const custom of state.titleAndKey.customKeyItems) {
+        items.push({
+          id: custom.id,
+          label: custom.label,
+          color: custom.color,
+          kind: 'fill'
+        });
+      }
+      return items;
+    }
+
+    function renderLegendKeyOverlay() {
+      const fltBox = document.getElementById('legendFloatingOverlay');
+      const fltTitle = document.getElementById('legendFloatingTitle');
+      const fltContourNote = document.getElementById('legendContourNote');
+      const fltList = document.getElementById('legendFloatingList');
+      const ftrBlock = document.getElementById('legendFooterBarBlock');
+      const ftrTitle = document.getElementById('legendFooterTitle');
+      const ftrList = document.getElementById('legendFooterList');
+
+      fltBox.classList.add('hidden');
+      ftrBlock.classList.add('hidden');
+
+      if (!state.titleAndKey.showLegend) return;
+      const items = collectActiveLegendItems();
+      if (items.length === 0) return;
+
+      if (fltContourNote) {
+        fltContourNote.classList.toggle('hidden', !state.terrain.contours);
+        fltContourNote.textContent = `V.I. ${state.terrain.contourIntervalM}m`;
+      }
+
+      const buildItemHtml = (item) => {
+        let swatch = '';
+        if (item.kind === 'cased-road') {
+          swatch = `<span class="w-6 h-2 rounded-xs shrink-0 flex items-center justify-center" style="background:${item.color}; border-top: 1.5px solid ${item.casingColor}; border-bottom: 1.5px solid ${item.casingColor};"></span>`;
+        } else if (item.kind === 'rail') {
+          swatch = `<span class="w-6 h-1.5 rounded-full relative flex items-center justify-center shrink-0" style="background:${item.color}"><span class="w-2 h-2 rounded-full bg-rose-600 border border-white"></span></span>`;
+        } else if (item.kind === 'dashed') {
+          swatch = `<span class="w-6 h-0 shrink-0 border-t-2 border-dashed" style="border-color:${item.color}"></span>`;
+        } else if (item.kind === 'contour') {
+          swatch = `<span class="w-6 h-2 flex flex-col justify-between shrink-0"><span class="w-full h-[1.5px]" style="background:${item.color}"></span><span class="w-full h-[0.8px] opacity-60" style="background:${item.color}"></span></span>`;
+        } else if (item.kind === 'line') {
+          swatch = `<span class="w-6 h-1.5 rounded-full shrink-0" style="background:${item.color}; border: 1px solid rgba(0,0,0,0.12)"></span>`;
+        } else if (item.kind === 'pin') {
+          swatch = `<span class="w-3 h-3 rounded-full shrink-0 mx-1.5 border border-white shadow-2xs" style="background:${item.color}"></span>`;
+        } else if (item.kind === 'zone') {
+          swatch = `<span class="w-5 h-3 rounded-xs shrink-0 mx-0.5 border border-dashed" style="background:${item.color}33; border-color:${item.color}"></span>`;
+        } else {
+          const borderCol = item.strokeColor || 'rgba(0,0,0,0.18)';
+          swatch = `<span class="w-5 h-3 rounded-xs shrink-0 mx-0.5 border" style="background:${item.color}; border-color:${borderCol}"></span>`;
+        }
+        return `
+          <div class="flex items-center gap-2 text-[10.5px] font-medium text-gray-800">
+            ${swatch}
+            <span class="truncate">${escapeHtml(item.label)}</span>
+          </div>
+        `;
+      };
+
+      const pos = state.titleAndKey.legendPosition;
+      if (pos === 'footer') {
+        ftrBlock.classList.remove('hidden');
+        ftrTitle.textContent = `${state.titleAndKey.legendTitle}:`;
+        ftrList.innerHTML = items.map(buildItemHtml).join('');
+      } else {
+        fltBox.classList.remove('hidden');
+        fltTitle.textContent = state.titleAndKey.legendTitle;
+        fltList.innerHTML = items.map(buildItemHtml).join('');
+
+        fltBox.style.top = 'auto';
+        fltBox.style.bottom = 'auto';
+        fltBox.style.left = 'auto';
+        fltBox.style.right = 'auto';
+
+        if (pos === 'bottom-left') {
+          fltBox.style.bottom = '14px';
+          fltBox.style.left = '14px';
+        } else if (pos === 'bottom-right') {
+          fltBox.style.bottom = '54px';
+          fltBox.style.right = '14px';
+        } else if (pos === 'top-left') {
+          fltBox.style.top = '14px';
+          fltBox.style.left = '14px';
+        } else if (pos === 'top-right') {
+          fltBox.style.top = '66px';
+          fltBox.style.right = '14px';
+        }
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function buildElementsTabHtml() {
+      let themesGrid = '';
+      for (const [key, t] of Object.entries(COLOR_THEMES)) {
+        const active = state.activeTheme === key;
+        themesGrid += `
+          <button onclick="applyColorTheme('${key}')" class="p-2.5 rounded-2xl border text-left transition-all flex flex-col gap-1.5 ${active ? 'bg-blue-50/80 border-blue-600 shadow-2xs' : 'bg-white border-gray-200 hover:border-gray-300'}">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-xs font-bold text-gray-900 truncate">${t.name}</span>
+              ${active ? '<i class="ph ph-check-circle text-blue-600 text-sm shrink-0"></i>' : ''}
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1">
+                <span class="w-3.5 h-3 rounded-xs border border-black/15" style="background:${t.land}"></span>
+                <span class="w-3.5 h-3 rounded-xs border border-black/15" style="background:${t.water}"></span>
+                <span class="w-3.5 h-3 rounded-xs border border-black/15" style="background:${t.parks}"></span>
+                <span class="w-3.5 h-3 rounded-xs border border-black/15" style="background:${t.highways}"></span>
+                <span class="w-3.5 h-3 rounded-xs border border-black/15" style="background:${t.secondaryRoads || t.railways}"></span>
+              </div>
+              <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">${t.badge || 'Style'}</span>
+            </div>
+          </button>
+        `;
+      }
+
+      const elementKeys = [
+        'highways', 'secondaryRoads', 'streets', 'paths', 'railways', 'water', 'parks', 'buildings', 'borders', 'land', 'placeLabels', 'streetLabels', 'pois'
+      ];
+
+      let listHtml = '';
+      for (const key of elementKeys) {
+        const item = state.elements[key];
+        const isExpanded = state.expandedLayerKey === key;
+        const hasWidth = typeof item.width === 'number';
+        const hasCasing = typeof item.cased === 'boolean';
+        const isRail = key === 'railways';
+        const isWater = key === 'water';
+        const isBuilding = key === 'buildings';
+        const isLand = key === 'land';
+
+        listHtml += `
+          <div class="rounded-2xl border ${item.visible ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200/60 opacity-65'} transition-all overflow-hidden">
+            <div class="p-2.5 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <input type="color" value="${item.color}" oninput="updateElementColor('${key}', this.value)" title="Primary Color" />
+                <button onclick="toggleExpandLayer('${key}')" class="text-left min-w-0 flex-1 flex items-center gap-1.5 group">
+                  <span class="text-xs font-semibold text-gray-900 group-hover:text-blue-600 truncate">${item.name}</span>
+                  <i class="ph ${isExpanded ? 'ph-caret-up' : 'ph-sliders-horizontal'} text-xs text-gray-400 group-hover:text-blue-600 shrink-0"></i>
+                </button>
+              </div>
+              ${!isLand ? `
+                <button onclick="toggleElementVisible('${key}')" class="w-9 rounded-full p-0.5 transition-colors shrink-0 ${item.visible ? 'bg-blue-600' : 'bg-gray-300'}" style="height: 20px;">
+                  <div class="w-4 h-4 rounded-full bg-white shadow-2xs transition-transform ${item.visible ? 'translate-x-4' : 'translate-x-0'}"></div>
+                </button>
+              ` : '<span class="text-[10px] font-medium text-gray-400 px-1.5">Base</span>'}
+            </div>
+
+            ${(item.visible && isExpanded) ? `
+              <div class="px-3 pb-3 pt-2 border-t border-gray-100 bg-gray-50/60 space-y-2.5 text-xs">
+                ${hasWidth ? `
+                  <div class="flex items-center gap-3">
+                    <span class="text-[11px] text-gray-500 w-20 shrink-0">Line Width</span>
+                    <input type="range" min="0.5" max="7" step="0.2" value="${item.width}" oninput="updateElementWidth('${key}', parseFloat(this.value))" class="flex-1" />
+                    <span class="text-[11px] font-mono text-gray-700 w-8 text-right">${item.width.toFixed(1)}</span>
+                  </div>
+                ` : ''}
+
+                ${hasCasing ? `
+                  <div class="flex items-center justify-between pt-0.5">
+                    <label class="flex items-center gap-2 text-gray-700 cursor-pointer">
+                      <input type="checkbox" ${item.cased ? 'checked' : ''} onchange="updateElementProp('${key}', 'cased', this.checked)" class="accent-blue-600 w-3.5 h-3.5" />
+                      <span>OS Double Road Casing</span>
+                    </label>
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-[10px] text-gray-500">Edge</span>
+                      <input type="color" value="${item.casingColor}" oninput="updateElementProp('${key}', 'casingColor', this.value)" />
+                    </div>
+                  </div>
+                ` : ''}
+
+                ${isWater ? `
+                  <div class="flex items-center justify-between">
+                    <span class="text-gray-600">Shoreline Stroke Color</span>
+                    <input type="color" value="${item.strokeColor || '#0284c7'}" oninput="updateElementProp('water', 'strokeColor', this.value)" />
+                  </div>
+                ` : ''}
+
+                ${isRail ? `
+                  <label class="flex items-center justify-between text-gray-700 cursor-pointer">
+                    <span>Cross-Tie Sleeper Pattern</span>
+                    <input type="checkbox" ${item.dashedTies ? 'checked' : ''} onchange="toggleRailTies(this.checked)" class="accent-blue-600 w-4 h-4" />
+                  </label>
+                  <label class="flex items-center justify-between text-gray-700 cursor-pointer">
+                    <span>Red OS Station Circles</span>
+                    <input type="checkbox" ${item.showStationCircles ? 'checked' : ''} onchange="updateElementProp('railways', 'showStationCircles', this.checked)" class="accent-blue-600 w-4 h-4" />
+                  </label>
+                ` : ''}
+
+                ${isBuilding ? `
+                  <label class="flex items-center justify-between text-gray-700 cursor-pointer">
+                    <span>3D Building Extrusion Depth</span>
+                    <input type="checkbox" ${item.extrude3d ? 'checked' : ''} onchange="toggleBuilding3D(this.checked)" class="accent-blue-600 w-4 h-4" />
+                  </label>
+                ` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      return `
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-gray-700">Cartographic Style Presets</h4>
+            <button onclick="cycleRandomTheme()" class="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1">
+              <i class="ph ph-shuffle"></i>
+              <span>Surprise Me</span>
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">${themesGrid}</div>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <i class="ph ph-mountains text-amber-700 text-base"></i>
+              <h4 class="text-xs font-bold text-gray-900">Topographic Contours & Relief</h4>
+            </div>
+            <input type="color" value="${state.terrain.contourColor}" oninput="updateTerrainSetting('contourColor', this.value)" title="Contour Line Color" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-0.5">
+            <label class="flex items-center justify-between bg-white px-2.5 py-2 rounded-xl border border-amber-200/80 text-xs font-medium text-gray-800 cursor-pointer">
+              <span>Contour Lines</span>
+              <input type="checkbox" ${state.terrain.contours ? 'checked' : ''} onchange="updateTerrainSetting('contours', this.checked)" class="accent-blue-600 w-4 h-4" />
+            </label>
+            <label class="flex items-center justify-between bg-white px-2.5 py-2 rounded-xl border border-amber-200/80 text-xs font-medium text-gray-800 cursor-pointer">
+              <span>3D Hillshade</span>
+              <input type="checkbox" ${state.terrain.hillshade ? 'checked' : ''} onchange="updateTerrainSetting('hillshade', this.checked)" class="accent-blue-600 w-4 h-4" />
+            </label>
+          </div>
+
+          ${state.terrain.contours ? `
+            <div class="flex items-center justify-between text-xs text-gray-700 pt-1">
+              <span>Vertical Interval</span>
+              <div class="flex bg-white border border-amber-200 rounded-lg p-0.5">
+                ${[5, 10, 20].map(v => `
+                  <button onclick="updateTerrainSetting('contourIntervalM', ${v})" class="px-2 py-0.5 rounded text-[11px] font-semibold ${state.terrain.contourIntervalM === v ? 'bg-amber-600 text-white' : 'text-gray-600'}">${v}m</button>
+                `).join('')}
+              </div>
+            </div>
+            <label class="flex items-center justify-between text-xs text-gray-700 cursor-pointer">
+              <span>Show Summit Spot Heights (▲ 245m)</span>
+              <input type="checkbox" ${state.terrain.showSpotHeights ? 'checked' : ''} onchange="updateTerrainSetting('showSpotHeights', this.checked)" class="accent-blue-600 w-4 h-4" />
+            </label>
+          ` : ''}
+        </div>
+
+        <div class="space-y-2 pt-2 border-t border-gray-100">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-gray-700">Map Layers <span class="text-[11px] font-normal text-gray-400">(Click any layer to customize)</span></h4>
+            <div class="flex items-center gap-2 text-xs">
+              <button onclick="setAllElementsVisibility(true)" class="text-blue-600 hover:underline font-medium">All On</button>
+              <span class="text-gray-300">|</span>
+              <button onclick="isolateTransitMap()" class="text-gray-600 hover:text-gray-900 font-medium">Transit</button>
+            </div>
+          </div>
+          <div class="space-y-1.5">${listHtml}</div>
+        </div>
+      `;
+    }
+
+    function buildMapFontsTabHtml() {
+      const MF = state.mapFonts;
+      return `
+        <div class="p-3 rounded-2xl bg-blue-50/60 border border-blue-200/80 flex items-center justify-between">
+          <div>
+            <div class="text-xs font-bold text-gray-900">Custom Map Typography Engine</div>
+            <div class="text-[11px] text-gray-600">Render custom fonts & road shields directly inside the map</div>
+          </div>
+          <input type="checkbox" ${MF.useCustomEngine ? 'checked' : ''} onchange="updateMapFontSetting('useCustomEngine', this.checked)" class="accent-blue-600 w-4 h-4" />
+        </div>
+
+        <div class="space-y-3 pt-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-gray-700">Cities, Towns & Neighborhoods</h4>
+            <input type="color" value="${state.elements.placeLabels.color}" oninput="updateElementColor('placeLabels', this.value)" />
+          </div>
+
+          <div>
+            <label class="text-[11px] text-gray-500 block mb-1">Settlement Font Family</label>
+            <select onchange="updateMapFontSetting('placeFont', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900">
+              ${MAP_FONT_OPTIONS.map(f => `<option value="${f.id}" ${MF.placeFont === f.id ? 'selected' : ''}>${f.label}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs text-gray-600">
+              <span>Place Label Size</span>
+              <span class="font-mono">${Math.round(MF.placeSizeScale * 100)}%</span>
+            </div>
+            <input type="range" min="0.7" max="1.6" step="0.05" value="${MF.placeSizeScale}" oninput="updateMapFontSetting('placeSizeScale', parseFloat(this.value))" class="w-full" />
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs text-gray-600">
+              <span>Letter Spacing (Tracking)</span>
+              <span class="font-mono">${MF.placeTracking.toFixed(1)} px</span>
+            </div>
+            <input type="range" min="0" max="4" step="0.2" value="${MF.placeTracking}" oninput="updateMapFontSetting('placeTracking', parseFloat(this.value))" class="w-full" />
+          </div>
+
+          <label class="flex items-center justify-between text-xs text-gray-700 cursor-pointer">
+            <span>Uppercase Settlement Names</span>
+            <input type="checkbox" ${MF.placeUppercase ? 'checked' : ''} onchange="updateMapFontSetting('placeUppercase', this.checked)" class="accent-blue-600 w-4 h-4" />
+          </label>
+        </div>
+
+        <div class="space-y-3 pt-4 border-t border-gray-100">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-gray-700">Streets & Road Number Shields</h4>
+            <input type="color" value="${state.elements.streetLabels.color}" oninput="updateElementColor('streetLabels', this.value)" />
+          </div>
+
+          <div>
+            <label class="text-[11px] text-gray-500 block mb-1">Street & Highway Font Family</label>
+            <select onchange="updateMapFontSetting('streetFont', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900">
+              ${MAP_FONT_OPTIONS.map(f => `<option value="${f.id}" ${MF.streetFont === f.id ? 'selected' : ''}>${f.label}</option>`).join('')}
+            </select>
+          </div>
+
+          <label class="flex items-center justify-between text-xs text-gray-700 cursor-pointer">
+            <span>Show Colored Road Number Shields (A1, M4, I-95)</span>
+            <input type="checkbox" ${MF.showRoadShields ? 'checked' : ''} onchange="updateMapFontSetting('showRoadShields', this.checked)" class="accent-blue-600 w-4 h-4" />
+          </label>
+
+          <label class="flex items-center justify-between text-xs text-gray-700 cursor-pointer">
+            <span>Uppercase Street Names</span>
+            <input type="checkbox" ${MF.streetUppercase ? 'checked' : ''} onchange="updateMapFontSetting('streetUppercase', this.checked)" class="accent-blue-600 w-4 h-4" />
+          </label>
+        </div>
+
+        <div class="space-y-3 pt-4 border-t border-gray-100">
+          <h4 class="text-xs font-bold text-gray-700">Water, Nature & Label Halo</h4>
+
+          <div>
+            <label class="text-[11px] text-gray-500 block mb-1">Water & Park Font Family</label>
+            <select onchange="updateMapFontSetting('waterFont', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900">
+              ${MAP_FONT_OPTIONS.map(f => `<option value="${f.id}" ${MF.waterFont === f.id ? 'selected' : ''}>${f.label}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-gray-700">
+            <span>Text Halo Outline Color</span>
+            <input type="color" value="${MF.haloColor}" oninput="updateMapFontSetting('haloColor', this.value)" />
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs text-gray-600">
+              <span>Text Halo Outline Thickness</span>
+              <span class="font-mono">${MF.haloWidth.toFixed(1)} px</span>
+            </div>
+            <input type="range" min="0" max="6" step="0.5" value="${MF.haloWidth}" oninput="updateMapFontSetting('haloWidth', parseFloat(this.value))" class="w-full" />
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-gray-700 pt-1">
+            <span>Map Label Density</span>
+            <div class="flex bg-gray-100 p-0.5 rounded-lg">
+              ${['low', 'normal', 'high'].map(d => `
+                <button onclick="updateMapFontSetting('labelDensity', '${d}')" class="px-2.5 py-1 rounded-md text-xs font-semibold capitalize ${MF.labelDensity === d ? 'bg-white text-blue-600 shadow-2xs' : 'text-gray-600'}">${d}</button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function convertInToUnit(inches, unit) {
+      if (unit === 'cm') return (inches * 2.54).toFixed(1);
+      if (unit === 'mm') return Math.round(inches * 25.4);
+      if (unit === 'px') return Math.round(inches * 96);
+      return Number(inches.toFixed(2));
+    }
+
+    function convertUnitToIn(val, unit) {
+      const n = parseFloat(val) || 10;
+      if (unit === 'cm') return n / 2.54;
+      if (unit === 'mm') return n / 25.4;
+      if (unit === 'px') return n / 96;
+      return n;
+    }
+
+    function buildSizeAndShapeTabHtml() {
+      const shapes = [
+        { id: 'rectangle', label: 'Rectangle', icon: 'ph-rectangle' },
+        { id: 'rounded', label: 'Rounded', icon: 'ph-square' },
+        { id: 'circle', label: 'Circle', icon: 'ph-circle' },
+        { id: 'arch', label: 'Arch Window', icon: 'ph-door' },
+        { id: 'pill', label: 'Capsule Pill', icon: 'ph-pill' },
+        { id: 'hexagon', label: 'Hexagon', icon: 'ph-hexagon' },
+        { id: 'fullbleed', label: 'Full Bleed', icon: 'ph-corners-out' }
+      ];
+
+      const dispW = convertInToUnit(state.frame.widthIn, state.frame.unit);
+      const dispH = convertInToUnit(state.frame.heightIn, state.frame.unit);
+
+      return `
+        <div class="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <i class="ph ph-grid-four text-sky-700 text-base"></i>
+              <h4 class="text-xs font-bold text-gray-900">OS National Grid & Reference Collar</h4>
+            </div>
+            <input type="checkbox" ${state.frame.showCoordGrid ? 'checked' : ''} onchange="updateFrameSetting('showCoordGrid', this.checked)" class="accent-blue-600 w-4 h-4" />
+          </div>
+
+          ${state.frame.showCoordGrid ? `
+            <div class="flex items-center justify-between text-xs text-gray-700">
+              <span>Grid Line Color</span>
+              <input type="color" value="${state.frame.gridColor}" oninput="updateFrameSetting('gridColor', this.value)" />
+            </div>
+            <label class="flex items-center justify-between text-xs text-gray-700 cursor-pointer">
+              <span>Show 2-Digit Easting/Northing Numbers</span>
+              <input type="checkbox" ${state.frame.showGridNumbers ? 'checked' : ''} onchange="updateFrameSetting('showGridNumbers', this.checked)" class="accent-blue-600 w-4 h-4" />
+            </label>
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs text-gray-600">
+                <span>Grid Square Spacing</span>
+                <span class="font-mono">${state.frame.gridSpacingPx} px</span>
+              </div>
+              <input type="range" min="50" max="140" step="5" value="${state.frame.gridSpacingPx}" oninput="updateFrameSetting('gridSpacingPx', parseInt(this.value))" class="w-full" />
+            </div>
+          ` : ''}
+
+          <div class="flex items-center justify-between text-xs text-gray-700 pt-1 border-t border-sky-200/60">
+            <span>Frame Border Style</span>
+            <div class="flex bg-white border border-sky-200 rounded-lg p-0.5">
+              <button onclick="updateFrameSetting('borderStyle', 'surveyor')" class="px-2 py-0.5 rounded text-[11px] font-semibold ${state.frame.borderStyle === 'surveyor' ? 'bg-sky-600 text-white' : 'text-gray-600'}">OS Checkered</button>
+              <button onclick="updateFrameSetting('borderStyle', 'solid')" class="px-2 py-0.5 rounded text-[11px] font-semibold ${state.frame.borderStyle === 'solid' ? 'bg-sky-600 text-white' : 'text-gray-600'}">Clean Line</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-2">
+          <h4 class="text-xs font-bold text-gray-700">Map Frame Shape</h4>
+          <div class="grid grid-cols-2 gap-2">
+            ${shapes.map(s => `
+              <button onclick="setFrameShape('${s.id}')" class="p-2.5 rounded-2xl border text-xs font-semibold flex items-center gap-2 transition-all ${state.frame.shape === s.id ? 'bg-blue-50/80 border-blue-600 text-blue-700' : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'}">
+                <i class="ph ${s.icon} text-base"></i>
+                <span>${s.label}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-4 border-t border-gray-100">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-gray-700">Dimensions & Metric Unit</h4>
+            <button onclick="swapOrientation()" class="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1">
+              <i class="ph ph-arrows-clockwise"></i>
+              <span>Swap Orientation</span>
+            </button>
+          </div>
+
+          <select onchange="selectSizePreset(this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-medium text-gray-900 focus:outline-none focus:border-blue-600">
+            ${SIZE_PRESETS.map(p => `<option value="${p.id}" ${state.frame.presetId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+          </select>
+
+          <div class="grid grid-cols-4 gap-1 bg-gray-100 p-1 rounded-xl">
+            ${['in', 'cm', 'mm', 'px'].map(u => `
+              <button onclick="setMetricUnit('${u}')" class="py-1.5 rounded-lg text-xs font-semibold transition-all ${state.frame.unit === u ? 'bg-white text-blue-600 shadow-2xs' : 'text-gray-600 hover:text-gray-900'}">${u}</button>
+            `).join('')}
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-2.5">
+              <label class="text-[11px] text-gray-500 block">Width (${state.frame.unit})</label>
+              <input type="number" step="any" value="${dispW}" onchange="setCustomDimension('w', this.value)" class="w-full bg-transparent text-sm font-bold text-gray-900 focus:outline-none mt-0.5" />
+            </div>
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-2.5">
+              <label class="text-[11px] text-gray-500 block">Height (${state.frame.unit})</label>
+              <input type="number" step="any" value="${dispH}" onchange="setCustomDimension('h', this.value)" class="w-full bg-transparent text-sm font-bold text-gray-900 focus:outline-none mt-0.5" />
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-4 border-t border-gray-100">
+          <h4 class="text-xs font-bold text-gray-700">Poster Paper & Border</h4>
+
+          <div class="flex items-center justify-between text-xs text-gray-700">
+            <span>Paper Mat Background</span>
+            <input type="color" value="${state.frame.paperBg}" oninput="updateFrameSetting('paperBg', this.value)" />
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs text-gray-600">
+              <span>Outer Margin Padding</span>
+              <span class="font-mono">${state.frame.marginPx} px</span>
+            </div>
+            <input type="range" min="0" max="64" step="2" value="${state.frame.marginPx}" oninput="updateFrameSetting('marginPx', parseInt(this.value))" class="w-full" />
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-gray-700">
+            <span>Border Line Color</span>
+            <input type="color" value="${state.frame.borderColor}" oninput="updateFrameSetting('borderColor', this.value)" />
+          </div>
+        </div>
+      `;
+    }
+
+    function buildLegendAndTitleTabHtml() {
+      const keyLayerOrder = ['highways', 'secondaryRoads', 'streets', 'paths', 'railways', 'water', 'parks', 'buildings', 'borders'];
+
+      return `
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-gray-700">Sheet Header & Poster Title</h4>
+            <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+              <input type="checkbox" ${state.titleAndKey.showTitle ? 'checked' : ''} onchange="updateTitleKeySetting('showTitle', this.checked)" class="accent-blue-600 w-4 h-4" />
+              <span>Show Title</span>
+            </label>
+          </div>
+
+          <div class="space-y-2">
+            <div>
+              <label class="text-[11px] text-gray-500 block mb-1">Title Heading</label>
+              <input type="text" value="${escapeHtml(state.place.title)}" oninput="updatePlaceText('title', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-none focus:border-blue-600" />
+            </div>
+            <div>
+              <label class="text-[11px] text-gray-500 block mb-1">Subtitle / Region</label>
+              <input type="text" value="${escapeHtml(state.place.subtitle)}" oninput="updatePlaceText('subtitle', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-blue-600" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[11px] text-gray-500 block mb-1">Series Label (Top)</label>
+                <input type="text" value="${escapeHtml(state.place.seriesTitle)}" oninput="updatePlaceText('seriesTitle', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-900" />
+              </div>
+              <div>
+                <label class="text-[11px] text-gray-500 block mb-1">Sheet Number</label>
+                <input type="text" value="${escapeHtml(state.place.sheetCode)}" oninput="updatePlaceText('sheetCode', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-mono text-gray-900" />
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] text-gray-500 block mb-1">Header Position</label>
+              <select onchange="updateTitleKeySetting('layout', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 text-xs text-gray-900">
+                <option value="top" ${state.titleAndKey.layout === 'top' ? 'selected' : ''}>OS Sheet Top Header</option>
+                <option value="bottom" ${state.titleAndKey.layout === 'bottom' ? 'selected' : ''}>Classic Editorial Bottom</option>
+                <option value="floating" ${state.titleAndKey.layout === 'floating' ? 'selected' : ''}>Floating Map Badge</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] text-gray-500 block mb-1">Title Font</label>
+              <select onchange="updateTitleKeySetting('fontFamily', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 text-xs text-gray-900">
+                <option value="serif" ${state.titleAndKey.fontFamily === 'serif' ? 'selected' : ''}>Ordnance Serif</option>
+                <option value="sans" ${state.titleAndKey.fontFamily === 'sans' ? 'selected' : ''}>Modern Sans</option>
+                <option value="cinzel" ${state.titleAndKey.fontFamily === 'cinzel' ? 'selected' : ''}>Engraved Roman</option>
+                <option value="mono" ${state.titleAndKey.fontFamily === 'mono' ? 'selected' : ''}>Surveyor Mono</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-4 border-t border-gray-100">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-gray-700">Map Key & OS Legend</h4>
+            <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+              <input type="checkbox" ${state.titleAndKey.showLegend ? 'checked' : ''} onchange="updateTitleKeySetting('showLegend', this.checked)" class="accent-blue-600 w-4 h-4" />
+              <span>Show Key</span>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[11px] text-gray-500 block mb-1">Key Heading</label>
+              <input type="text" value="${escapeHtml(state.titleAndKey.legendTitle)}" oninput="updateTitleKeySetting('legendTitle', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 text-xs text-gray-900" />
+            </div>
+            <div>
+              <label class="text-[11px] text-gray-500 block mb-1">Key Placement</label>
+              <select onchange="updateTitleKeySetting('legendPosition', this.value)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 text-xs text-gray-900">
+                <option value="bottom-left" ${state.titleAndKey.legendPosition === 'bottom-left' ? 'selected' : ''}>Bottom Left</option>
+                <option value="bottom-right" ${state.titleAndKey.legendPosition === 'bottom-right' ? 'selected' : ''}>Bottom Right</option>
+                <option value="top-left" ${state.titleAndKey.legendPosition === 'top-left' ? 'selected' : ''}>Top Left</option>
+                <option value="top-right" ${state.titleAndKey.legendPosition === 'top-right' ? 'selected' : ''}>Top Right</option>
+                <option value="footer" ${state.titleAndKey.legendPosition === 'footer' ? 'selected' : ''}>Full Footer Strip</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-1.5 pt-1">
+            <div class="text-[11px] font-medium text-gray-500">Toggle & rename symbols in your key:</div>
+            ${keyLayerOrder.map(k => {
+              const el = state.elements[k];
+              return `
+                <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5">
+                  <input type="checkbox" ${el.inKey ? 'checked' : ''} onchange="toggleElementInKey('${k}', this.checked)" class="accent-blue-600 w-3.5 h-3.5" />
+                  <span class="w-3.5 h-2.5 rounded-xs shrink-0 border border-black/20" style="background:${el.color}"></span>
+                  <input type="text" value="${escapeHtml(el.keyLabel)}" oninput="updateElementKeyLabel('${k}', this.value)" class="flex-1 bg-transparent text-xs text-gray-800 focus:outline-none" />
+                </div>
+              `;
+            }).join('')}
+
+            ${state.titleAndKey.customKeyItems.map((ci, idx) => `
+              <div class="flex items-center gap-2 bg-blue-50/50 border border-blue-200 rounded-xl px-2.5 py-1.5">
+                <input type="color" value="${ci.color}" oninput="updateCustomKeyItem(${idx}, 'color', this.value)" />
+                <input type="text" value="${escapeHtml(ci.label)}" oninput="updateCustomKeyItem(${idx}, 'label', this.value)" class="flex-1 bg-transparent text-xs text-gray-800 focus:outline-none" />
+                <button onclick="removeCustomKeyItem(${idx})" class="text-gray-400 hover:text-red-500">
+                  <i class="ph ph-trash text-sm"></i>
+                </button>
+              </div>
+            `).join('')}
+
+            <button onclick="addCustomKeyItem()" class="w-full py-2 rounded-xl border border-dashed border-gray-300 hover:border-blue-500 text-xs font-semibold text-blue-600 flex items-center justify-center gap-1.5 transition-colors mt-1">
+              <i class="ph ph-plus-circle"></i>
+              <span>Add Custom Key Symbol</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-4 border-t border-gray-100">
+          <h4 class="text-xs font-bold text-gray-700">Scale Ratio & Magnetic North</h4>
+
+          <label class="flex items-center justify-between text-xs text-gray-700 cursor-pointer">
+            <span>Show Representative Scale & Bar</span>
+            <input type="checkbox" ${state.titleAndKey.showScaleBar ? 'checked' : ''} onchange="updateTitleKeySetting('showScaleBar', this.checked)" class="accent-blue-600 w-4 h-4" />
+          </label>
+
+          <div class="flex items-center justify-between text-xs text-gray-700">
+            <span>Scale Units</span>
+            <div class="flex bg-gray-100 p-0.5 rounded-lg">
+              <button onclick="updateTitleKeySetting('scaleUnit', 'metric')" class="px-2.5 py-1 rounded-md text-xs font-semibold ${state.titleAndKey.scaleUnit === 'metric' ? 'bg-white text-blue-600 shadow-2xs' : 'text-gray-600'}">Metric (km)</button>
+              <button onclick="updateTitleKeySetting('scaleUnit', 'imperial')" class="px-2.5 py-1 rounded-md text-xs font-semibold ${state.titleAndKey.scaleUnit === 'imperial' ? 'bg-white text-blue-600 shadow-2xs' : 'text-gray-600'}">Imperial (mi)</button>
+            </div>
+          </div>
+
+          <label class="flex items-center justify-between text-xs text-gray-700 cursor-pointer">
+            <span>Show Grid / Magnetic North Declination</span>
+            <input type="checkbox" ${state.titleAndKey.showMagneticNorth ? 'checked' : ''} onchange="updateTitleKeySetting('showMagneticNorth', this.checked)" class="accent-blue-600 w-4 h-4" />
+          </label>
+        </div>
+      `;
+    }
+
+    function buildDrawAndPinsTabHtml() {
+      return `
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-gray-700">Waypoints, Peaks & Trig Points</h4>
+            <button onclick="setActiveTool(state.activeTool === 'pin' ? 'pan' : 'pin')" class="px-3 py-1 rounded-xl text-xs font-semibold ${state.activeTool === 'pin' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'}">
+              ${state.activeTool === 'pin' ? 'Click on Map...' : '+ Click Map to Pin'}
+            </button>
+          </div>
+
+          <div class="p-3 rounded-2xl bg-gray-50 border border-gray-200 space-y-2.5">
+            <div class="flex items-center gap-2">
+              <input type="color" value="${state.drawing.pinDefaults.color}" oninput="state.drawing.pinDefaults.color = this.value" />
+              <input type="text" value="${escapeHtml(state.drawing.pinDefaults.label)}" oninput="state.drawing.pinDefaults.label = this.value" placeholder="Pin Label..." class="flex-1 bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-900 focus:outline-none" />
+            </div>
+            <div class="grid grid-cols-4 gap-1.5">
+              ${PIN_ICONS.map(ic => `
+                <button onclick="selectPinIcon('${ic.id}')" class="py-1.5 rounded-xl border text-xs flex flex-col items-center gap-0.5 ${state.drawing.pinDefaults.icon === ic.id ? 'bg-blue-50 border-blue-600 text-blue-600 font-semibold' : 'bg-white border-gray-200 text-gray-600'}">
+                  <i class="ph ${ic.id} text-base"></i>
+                  <span class="text-[10px]">${ic.label}</span>
+                </button>
+              `).join('')}
+            </div>
+            <button onclick="dropPinAtCenter()" class="w-full py-1.5 rounded-xl bg-white hover:bg-gray-100 border border-gray-200 text-xs font-semibold text-gray-700 shadow-2xs transition-colors">
+              Drop Waypoint at Map Center
+            </button>
+          </div>
+
+          ${state.drawing.pins.length > 0 ? `
+            <div class="space-y-1.5">
+              ${state.drawing.pins.map((p, idx) => `
+                <div class="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-xl px-2.5 py-1.5">
+                  <i class="ph ${p.icon}" style="color:${p.color}"></i>
+                  <input type="text" value="${escapeHtml(p.label)}" oninput="updatePlacedPinLabel(${idx}, this.value)" class="flex-1 bg-transparent text-xs text-gray-800 focus:outline-none" />
+                  <button onclick="deletePlacedPin(${idx})" class="text-gray-400 hover:text-red-500">
+                    <i class="ph ph-trash text-sm"></i>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="space-y-3 pt-4 border-t border-gray-100">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-gray-700">Draw Trails, Transit or Routes</h4>
+            <button onclick="setActiveTool(state.activeTool === 'route' ? 'pan' : 'route')" class="px-3 py-1 rounded-xl text-xs font-semibold ${state.activeTool === 'route' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'}">
+              ${state.activeTool === 'route' ? 'Drawing Active' : '+ Draw Line'}
+            </button>
+          </div>
+
+          <div class="p-3 rounded-2xl bg-gray-50 border border-gray-200 space-y-2.5">
+            <div class="flex items-center gap-2">
+              <input type="color" value="${state.drawing.routeDefaults.color}" oninput="state.drawing.routeDefaults.color = this.value" />
+              <input type="text" value="${escapeHtml(state.drawing.routeDefaults.name)}" oninput="state.drawing.routeDefaults.name = this.value" placeholder="Trail / Line Name" class="flex-1 bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-900 focus:outline-none" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <select onchange="state.drawing.routeDefaults.style = this.value" class="bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-800">
+                <option value="dashed" ${state.drawing.routeDefaults.style === 'dashed' ? 'selected' : ''}>OS Footpath Dashed</option>
+                <option value="solid" ${state.drawing.routeDefaults.style === 'solid' ? 'selected' : ''}>Solid Transit Line</option>
+                <option value="train" ${state.drawing.routeDefaults.style === 'train' ? 'selected' : ''}>Railway Cross-Ties</option>
+              </select>
+              <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-2.5 py-1">
+                <span class="text-[11px] text-gray-500">Width</span>
+                <input type="range" min="2" max="10" step="0.5" value="${state.drawing.routeDefaults.width}" oninput="state.drawing.routeDefaults.width = parseFloat(this.value)" class="w-full" />
+              </div>
+            </div>
+          </div>
+
+          ${state.drawing.routes.length > 0 ? `
+            <div class="space-y-1.5">
+              ${state.drawing.routes.map((r, idx) => `
+                <div class="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-xl px-2.5 py-1.5">
+                  <span class="w-3.5 h-1.5 rounded-full" style="background:${r.color}"></span>
+                  <input type="text" value="${escapeHtml(r.name)}" oninput="updateDrawnRouteName(${idx}, this.value)" class="flex-1 bg-transparent text-xs text-gray-800 focus:outline-none" />
+                  <button onclick="deleteDrawnRoute(${idx})" class="text-gray-400 hover:text-red-500">
+                    <i class="ph ph-trash text-sm"></i>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="space-y-3 pt-4 border-t border-gray-100">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-gray-700">Draw Shaded Polygon Area / Zone</h4>
+            <button onclick="setActiveTool(state.activeTool === 'zone' ? 'pan' : 'zone')" class="px-3 py-1 rounded-xl text-xs font-semibold ${state.activeTool === 'zone' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'}">
+              ${state.activeTool === 'zone' ? 'Click Corners...' : '+ Draw Area'}
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-2.5">
+            <input type="color" value="${state.drawing.zoneDefaults.color}" oninput="state.drawing.zoneDefaults.color = this.value" />
+            <input type="text" value="${escapeHtml(state.drawing.zoneDefaults.name)}" oninput="state.drawing.zoneDefaults.name = this.value" placeholder="Zone Name (Added to Key)" class="flex-1 bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-900 focus:outline-none" />
+          </div>
+
+          ${state.drawing.zones.length > 0 ? `
+            <div class="space-y-1.5">
+              ${state.drawing.zones.map((z, idx) => `
+                <div class="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-xl px-2.5 py-1.5">
+                  <span class="w-3.5 h-3.5 rounded-xs border" style="background:${z.color}44; border-color:${z.color}"></span>
+                  <input type="text" value="${escapeHtml(z.name)}" oninput="updateDrawnZoneName(${idx}, this.value)" class="flex-1 bg-transparent text-xs text-gray-800 focus:outline-none" />
+                  <button onclick="deleteDrawnZone(${idx})" class="text-gray-400 hover:text-red-500">
+                    <i class="ph ph-trash text-sm"></i>
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function getActiveTabHtml(tab) {
+      if (tab === 'elements') return buildElementsTabHtml();
+      if (tab === 'fonts') return buildMapFontsTabHtml();
+      if (tab === 'size') return buildSizeAndShapeTabHtml();
+      if (tab === 'legend') return buildLegendAndTitleTabHtml();
+      return buildDrawAndPinsTabHtml();
+    }
+
+    function renderSidebarContent() {
+      const desktopBody = document.getElementById('desktopSidebarBody');
+      if (desktopBody) desktopBody.innerHTML = getActiveTabHtml(state.activeTab);
+
+      const mobileBody = document.getElementById('mobileSheetBody');
+      if (mobileBody && !document.getElementById('mobileSheetContainer').classList.contains('translate-y-full')) {
+        mobileBody.innerHTML = getActiveTabHtml(state.activeTab);
+      }
+    }
+
+    function switchStudioTab(tab) {
+      state.activeTab = tab;
+      ['elements', 'fonts', 'size', 'legend', 'draw'].forEach(t => {
+        const btn = document.getElementById(`tabBtn-${t}`);
+        if (btn) {
+          btn.className = t === tab
+            ? 'flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-semibold bg-white text-blue-600 shadow-2xs border border-gray-200/80 transition-all'
+            : 'flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-medium text-gray-600 hover:text-gray-900 hover:bg-white/60 transition-all';
+        }
+      });
+      renderSidebarContent();
+    }
+
+    function openMobileSheet(tab) {
+      state.activeTab = tab;
+      const titles = {
+        elements: 'Cartographic Layers & Relief',
+        fonts: 'Custom Fonts Inside the Map',
+        size: 'OS Grid, Frame Shape & Size',
+        legend: 'Map Key, Sheet Header & Scale',
+        draw: 'Waypoints, Trails & Polygon Zones'
+      };
+      document.getElementById('mobileSheetHeading').textContent = titles[tab];
+      document.getElementById('mobileSheetBody').innerHTML = getActiveTabHtml(tab);
+      document.getElementById('mobileSheetBackdrop').classList.remove('hidden');
+      document.getElementById('mobileSheetContainer').classList.remove('translate-y-full');
+    }
+
+    function closeMobileSheet() {
+      document.getElementById('mobileSheetBackdrop').classList.add('hidden');
+      document.getElementById('mobileSheetContainer').classList.add('translate-y-full');
+    }
+
+    function toggleExpandLayer(key) {
+      state.expandedLayerKey = state.expandedLayerKey === key ? null : key;
+      renderSidebarContent();
+    }
+
+    function toggleElementVisible(key) {
+      state.elements[key].visible = !state.elements[key].visible;
+      applyMapElementStyles();
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function updateElementColor(key, color) {
+      state.elements[key].color = color;
+      applyMapElementStyles();
+      renderLegendKeyOverlay();
+    }
+
+    function updateElementWidth(key, width) {
+      state.elements[key].width = width;
+      applyMapElementStyles();
+      renderSidebarContent();
+    }
+
+    function updateElementProp(key, prop, val) {
+      state.elements[key][prop] = val;
+      applyMapElementStyles();
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function updateTerrainSetting(prop, val) {
+      state.terrain[prop] = val;
+      applyMapElementStyles();
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+      scheduleCustomOverlayRender();
+    }
+
+    function updateMapFontSetting(prop, val) {
+      state.mapFonts[prop] = val;
+      applyMapElementStyles();
+      renderSidebarContent();
+      scheduleCustomOverlayRender();
+    }
+
+    function toggleRailTies(checked) {
+      state.elements.railways.dashedTies = checked;
+      applyMapElementStyles();
+    }
+
+    function toggleBuilding3D(checked) {
+      state.elements.buildings.extrude3d = checked;
+      if (map) {
+        map.easeTo({ pitch: checked ? 45 : 0, duration: 500 });
+      }
+      applyMapElementStyles();
+    }
+
+    function setAllElementsVisibility(visible) {
+      for (const k of Object.keys(state.elements)) {
+        if (k !== 'land') state.elements[k].visible = visible;
+      }
+      applyMapElementStyles();
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function isolateTransitMap() {
+      const keep = new Set(['land', 'water', 'railways', 'placeLabels', 'pois']);
+      for (const k of Object.keys(state.elements)) {
+        state.elements[k].visible = keep.has(k);
+      }
+      applyColorTheme('transit');
+    }
+
+    function cycleRandomTheme() {
+      const keys = Object.keys(COLOR_THEMES);
+      const next = keys[(keys.indexOf(state.activeTheme) + 1) % keys.length];
+      applyColorTheme(next);
+    }
+
+    function setFrameShape(shape) {
+      state.frame.shape = shape;
+      updateAllPosterOverlays();
+      renderSidebarContent();
+    }
+
+    function selectSizePreset(presetId) {
+      const p = SIZE_PRESETS.find(item => item.id === presetId);
+      if (!p) return;
+      state.frame.presetId = p.id;
+      state.frame.widthIn = p.widthIn;
+      state.frame.heightIn = p.heightIn;
+      updateAllPosterOverlays();
+      renderSidebarContent();
+    }
+
+    function setMetricUnit(unit) {
+      state.frame.unit = unit;
+      renderSidebarContent();
+    }
+
+    function setCustomDimension(axis, val) {
+      state.frame.presetId = 'custom';
+      const inches = Math.max(3, Math.min(72, convertUnitToIn(val, state.frame.unit)));
+      if (axis === 'w') state.frame.widthIn = inches;
+      else state.frame.heightIn = inches;
+      updateAllPosterOverlays();
+      renderSidebarContent();
+    }
+
+    function swapOrientation() {
+      const tmp = state.frame.widthIn;
+      state.frame.widthIn = state.frame.heightIn;
+      state.frame.heightIn = tmp;
+      updateAllPosterOverlays();
+      renderSidebarContent();
+    }
+
+    function updateFrameSetting(prop, val) {
+      state.frame[prop] = val;
+      updateAllPosterOverlays();
+      if (['marginPx', 'showBorder', 'showCoordGrid', 'showGridNumbers', 'borderStyle', 'gridSpacingPx'].includes(prop)) {
+        renderSidebarContent();
+      }
+    }
+
+    function updateTitleKeySetting(prop, val) {
+      state.titleAndKey[prop] = val;
+      updateAllPosterOverlays();
+      renderSidebarContent();
+    }
+
+    function updatePlaceText(prop, val) {
+      state.place[prop] = val;
+      updateAllPosterOverlays();
+    }
+
+    function toggleElementInKey(key, checked) {
+      state.elements[key].inKey = checked;
+      renderLegendKeyOverlay();
+    }
+
+    function updateElementKeyLabel(key, val) {
+      state.elements[key].keyLabel = val;
+      renderLegendKeyOverlay();
+    }
+
+    function addCustomKeyItem() {
+      state.titleAndKey.customKeyItems.push({
+        id: 'custom-' + Date.now(),
+        label: 'National Trust Property',
+        color: '#7c3aed'
+      });
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function updateCustomKeyItem(idx, prop, val) {
+      if (state.titleAndKey.customKeyItems[idx]) {
+        state.titleAndKey.customKeyItems[idx][prop] = val;
+        renderLegendKeyOverlay();
+      }
+    }
+
+    function removeCustomKeyItem(idx) {
+      state.titleAndKey.customKeyItems.splice(idx, 1);
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function setActiveTool(tool) {
+      if ((state.activeTool === 'route' || state.activeTool === 'zone') && tool !== state.activeTool) {
+        finishActiveDrawingShape(false);
+      }
+      state.activeTool = tool;
+      state.drawing.measureCoords = [];
+      updateMeasureLayer();
+
+      ['pan', 'pin', 'route', 'zone', 'text', 'measure'].forEach(t => {
+        const btn = document.getElementById(`toolBtn-${t}`);
+        if (btn) {
+          btn.className = t === tool
+            ? 'px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 bg-blue-600 text-white shadow-2xs transition-all shrink-0'
+            : 'px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 text-gray-700 hover:bg-gray-100 transition-all shrink-0';
+        }
+      });
+
+      const banner = document.getElementById('toolHelperBanner');
+      const helperText = document.getElementById('toolHelperText');
+      const finishBtn = document.getElementById('finishRouteBtn');
+
+      if (tool === 'pan') {
+        banner.classList.add('hidden');
+        if (map) map.getCanvas().style.cursor = '';
+      } else {
+        banner.classList.remove('hidden');
+        finishBtn.classList.toggle('hidden', !(tool === 'route' || tool === 'zone'));
+        if (map) map.getCanvas().style.cursor = 'crosshair';
+        const messages = {
+          pin: 'Click anywhere on the map to drop a custom Waypoint',
+          route: 'Click points along the map to draw a trail or route line',
+          zone: 'Click 3 or more corners on the map to shade a polygon area',
+          text: 'Click anywhere on the map to place a text callout',
+          measure: 'Click points on the map to measure distance'
+        };
+        helperText.textContent = messages[tool];
+      }
+      renderSidebarContent();
+    }
+
+    function selectPinIcon(iconId) {
+      state.drawing.pinDefaults.icon = iconId;
+      renderSidebarContent();
+    }
+
+    function handleMapCanvasClick(e) {
+      const { lng, lat } = e.lngLat;
+
+      if (state.activeTool === 'pin') {
+        state.drawing.pins.push({
+          id: 'pin-' + Date.now(),
+          lng,
+          lat,
+          label: state.drawing.pinDefaults.label || 'Waypoint',
+          color: state.drawing.pinDefaults.color,
+          icon: state.drawing.pinDefaults.icon
+        });
+        syncDomMarkers();
+        renderLegendKeyOverlay();
+        renderSidebarContent();
+        showToast('Placed waypoint on map');
+      } else if (state.activeTool === 'route') {
+        state.drawing.activeRouteCoords.push([lng, lat]);
+        syncUserRoutesSource();
+      } else if (state.activeTool === 'zone') {
+        state.drawing.activeZoneCoords.push([lng, lat]);
+        syncUserZonesSource();
+      } else if (state.activeTool === 'text') {
+        state.drawing.labels.push({
+          id: 'lbl-' + Date.now(),
+          lng,
+          lat,
+          text: state.drawing.textDefaults.text || 'Callout',
+          color: state.drawing.textDefaults.color,
+          size: state.drawing.textDefaults.size
+        });
+        syncDomMarkers();
+        renderSidebarContent();
+        showToast('Placed text callout');
+      } else if (state.activeTool === 'measure') {
+        state.drawing.measureCoords.push([lng, lat]);
+        updateMeasureLayer();
+      }
+    }
+
+    function dropPinAtCenter() {
+      if (!map) return;
+      const c = map.getCenter();
+      state.drawing.pins.push({
+        id: 'pin-' + Date.now(),
+        lng: c.lng,
+        lat: c.lat,
+        label: state.drawing.pinDefaults.label || 'Center Pin',
+        color: state.drawing.pinDefaults.color,
+        icon: state.drawing.pinDefaults.icon
+      });
+      syncDomMarkers();
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+      showToast('Added waypoint at map center');
+    }
+
+    function finishActiveDrawingShape(switchToPan = true) {
+      if (state.drawing.activeRouteCoords.length >= 2) {
+        state.drawing.routes.push({
+          id: 'route-' + Date.now(),
+          name: state.drawing.routeDefaults.name || `Trail ${state.drawing.routes.length + 1}`,
+          color: state.drawing.routeDefaults.color,
+          width: state.drawing.routeDefaults.width,
+          style: state.drawing.routeDefaults.style,
+          coords: [...state.drawing.activeRouteCoords]
+        });
+        state.drawing.activeRouteCoords = [];
+        syncUserRoutesSource();
+        renderLegendKeyOverlay();
+        renderSidebarContent();
+        showToast('Saved custom trail/route');
+      }
+      if (state.drawing.activeZoneCoords.length >= 3) {
+        state.drawing.zones.push({
+          id: 'zone-' + Date.now(),
+          name: state.drawing.zoneDefaults.name || `Zone ${state.drawing.zones.length + 1}`,
+          color: state.drawing.zoneDefaults.color,
+          opacity: state.drawing.zoneDefaults.opacity,
+          coords: [...state.drawing.activeZoneCoords, state.drawing.activeZoneCoords[0]]
+        });
+        state.drawing.activeZoneCoords = [];
+        syncUserZonesSource();
+        renderLegendKeyOverlay();
+        renderSidebarContent();
+        showToast('Saved shaded polygon area');
+      }
+      state.drawing.activeRouteCoords = [];
+      state.drawing.activeZoneCoords = [];
+      syncUserRoutesSource();
+      syncUserZonesSource();
+      if (switchToPan) setActiveTool('pan');
+    }
+
+    function syncUserRoutesSource() {
+      if (!map || !map.getSource('cartogram-user-routes')) return;
+      const features = state.drawing.routes.map(r => ({
+        type: 'Feature',
+        properties: { color: r.color, width: r.width, style: r.style },
+        geometry: { type: 'LineString', coordinates: r.coords }
+      }));
+
+      if (state.drawing.activeRouteCoords.length >= 2) {
+        features.push({
+          type: 'Feature',
+          properties: {
+            color: state.drawing.routeDefaults.color,
+            width: state.drawing.routeDefaults.width,
+            style: state.drawing.routeDefaults.style
+          },
+          geometry: { type: 'LineString', coordinates: state.drawing.activeRouteCoords }
+        });
+      }
+
+      map.getSource('cartogram-user-routes').setData({
+        type: 'FeatureCollection',
+        features
+      });
+    }
+
+    function syncUserZonesSource() {
+      if (!map || !map.getSource('cartogram-user-zones')) return;
+      const features = state.drawing.zones.map(z => ({
+        type: 'Feature',
+        properties: { color: z.color, opacity: z.opacity },
+        geometry: { type: 'Polygon', coordinates: [z.coords] }
+      }));
+
+      if (state.drawing.activeZoneCoords.length >= 3) {
+        features.push({
+          type: 'Feature',
+          properties: {
+            color: state.drawing.zoneDefaults.color,
+            opacity: state.drawing.zoneDefaults.opacity
+          },
+          geometry: { type: 'Polygon', coordinates: [[...state.drawing.activeZoneCoords, state.drawing.activeZoneCoords[0]]] }
+        });
+      }
+
+      map.getSource('cartogram-user-zones').setData({
+        type: 'FeatureCollection',
+        features
+      });
+    }
+
+    function updateDrawnZoneName(idx, val) {
+      if (state.drawing.zones[idx]) {
+        state.drawing.zones[idx].name = val;
+        renderLegendKeyOverlay();
+      }
+    }
+
+    function deleteDrawnZone(idx) {
+      state.drawing.zones.splice(idx, 1);
+      syncUserZonesSource();
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function updateElementColor(key, color) {
+      state.elements[key].color = color;
+      applyMapElementStyles();
+      renderLegendKeyOverlay();
+    }
+
+    function updateElementWidth(key, width) {
+      state.elements[key].width = width;
+      applyMapElementStyles();
+      renderSidebarContent();
+    }
+
+    function toggleRailTies(checked) {
+      state.elements.railways.dashedTies = checked;
+      applyMapElementStyles();
+    }
+
+    function toggleBuilding3D(checked) {
+      state.elements.buildings.extrude3d = checked;
+      if (map) {
+        map.easeTo({ pitch: checked ? 45 : 0, duration: 500 });
+      }
+      applyMapElementStyles();
+    }
+
+    function setAllElementsVisibility(visible) {
+      for (const k of Object.keys(state.elements)) {
+        if (k !== 'land') state.elements[k].visible = visible;
+      }
+      applyMapElementStyles();
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function isolateTransitMap() {
+      const keep = new Set(['land', 'water', 'railways', 'placeLabels', 'pois']);
+      for (const k of Object.keys(state.elements)) {
+        state.elements[k].visible = keep.has(k);
+      }
+      applyColorTheme('transit');
+    }
+
+    function cycleRandomTheme() {
+      const keys = Object.keys(COLOR_THEMES);
+      const next = keys[(keys.indexOf(state.activeTheme) + 1) % keys.length];
+      applyColorTheme(next);
+    }
+
+    function setFrameShape(shape) {
+      state.frame.shape = shape;
+      updateAllPosterOverlays();
+      renderSidebarContent();
+    }
+
+    function selectSizePreset(presetId) {
+      const p = SIZE_PRESETS.find(item => item.id === presetId);
+      if (!p) return;
+      state.frame.presetId = p.id;
+      state.frame.widthIn = p.widthIn;
+      state.frame.heightIn = p.heightIn;
+      updateAllPosterOverlays();
+      renderSidebarContent();
+    }
+
+    function setMetricUnit(unit) {
+      state.frame.unit = unit;
+      renderSidebarContent();
+    }
+
+    function setCustomDimension(axis, val) {
+      state.frame.presetId = 'custom';
+      const inches = Math.max(3, Math.min(72, convertUnitToIn(val, state.frame.unit)));
+      if (axis === 'w') state.frame.widthIn = inches;
+      else state.frame.heightIn = inches;
+      updateAllPosterOverlays();
+      renderSidebarContent();
+    }
+
+    function swapOrientation() {
+      const tmp = state.frame.widthIn;
+      state.frame.widthIn = state.frame.heightIn;
+      state.frame.heightIn = tmp;
+      updateAllPosterOverlays();
+      renderSidebarContent();
+    }
+
+    function updateFrameSetting(prop, val) {
+      state.frame[prop] = val;
+      updateAllPosterOverlays();
+      if (prop === 'marginPx' || prop === 'showBorder' || prop === 'showCoordGrid') {
+        renderSidebarContent();
+      }
+    }
+
+    function updateTitleKeySetting(prop, val) {
+      state.titleAndKey[prop] = val;
+      updateAllPosterOverlays();
+      renderSidebarContent();
+    }
+
+    function updatePlaceText(prop, val) {
+      state.place[prop] = val;
+      updateAllPosterOverlays();
+    }
+
+    function toggleElementInKey(key, checked) {
+      state.elements[key].inKey = checked;
+      renderLegendKeyOverlay();
+    }
+
+    function updateElementKeyLabel(key, val) {
+      state.elements[key].keyLabel = val;
+      renderLegendKeyOverlay();
+    }
+
+    function addCustomKeyItem() {
+      state.titleAndKey.customKeyItems.push({
+        id: 'custom-' + Date.now(),
+        label: 'Featured District',
+        color: '#8b5cf6'
+      });
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function updateCustomKeyItem(idx, prop, val) {
+      if (state.titleAndKey.customKeyItems[idx]) {
+        state.titleAndKey.customKeyItems[idx][prop] = val;
+        renderLegendKeyOverlay();
+      }
+    }
+
+    function removeCustomKeyItem(idx) {
+      state.titleAndKey.customKeyItems.splice(idx, 1);
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function setActiveTool(tool) {
+      if (state.activeTool === 'route' && tool !== 'route' && state.drawing.activeRouteCoords.length >= 2) {
+        finishCurrentRoute();
+      }
+      state.activeTool = tool;
+      state.drawing.measureCoords = [];
+      updateMeasureLayer();
+
+      ['pan', 'pin', 'route', 'text', 'measure'].forEach(t => {
+        const btn = document.getElementById(`toolBtn-${t}`);
+        if (btn) {
+          btn.className = t === tool
+            ? 'px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 bg-blue-600 text-white shadow-2xs transition-all shrink-0'
+            : 'px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 text-gray-700 hover:bg-gray-100 transition-all shrink-0';
+        }
+      });
+
+      const banner = document.getElementById('toolHelperBanner');
+      const helperText = document.getElementById('toolHelperText');
+      const finishBtn = document.getElementById('finishRouteBtn');
+
+      if (tool === 'pan') {
+        banner.classList.add('hidden');
+        if (map) map.getCanvas().style.cursor = '';
+      } else {
+        banner.classList.remove('hidden');
+        finishBtn.classList.toggle('hidden', tool !== 'route');
+        if (map) map.getCanvas().style.cursor = 'crosshair';
+        const messages = {
+          pin: 'Click anywhere on the map to drop a custom Pin',
+          route: 'Click points along the map to draw a line',
+          text: 'Click anywhere on the map to place a text label',
+          measure: 'Click points on the map to measure real-world distance'
+        };
+        helperText.textContent = messages[tool];
+      }
+      renderSidebarContent();
+    }
+
+    function selectPinIcon(iconId) {
+      state.drawing.pinDefaults.icon = iconId;
+      renderSidebarContent();
+    }
+
+    function handleMapCanvasClick(e) {
+      const { lng, lat } = e.lngLat;
+
+      if (state.activeTool === 'pin') {
+        state.drawing.pins.push({
+          id: 'pin-' + Date.now(),
+          lng,
+          lat,
+          label: state.drawing.pinDefaults.label || 'Custom Pin',
+          color: state.drawing.pinDefaults.color,
+          icon: state.drawing.pinDefaults.icon
+        });
+        syncDomMarkers();
+        renderLegendKeyOverlay();
+        renderSidebarContent();
+        showToast('Pinned marker on map');
+      } else if (state.activeTool === 'route') {
+        state.drawing.activeRouteCoords.push([lng, lat]);
+        syncUserRoutesSource();
+      } else if (state.activeTool === 'text') {
+        state.drawing.labels.push({
+          id: 'lbl-' + Date.now(),
+          lng,
+          lat,
+          text: state.drawing.textDefaults.text || 'Custom Label',
+          color: state.drawing.textDefaults.color,
+          size: state.drawing.textDefaults.size
+        });
+        syncDomMarkers();
+        renderSidebarContent();
+        showToast('Placed text callout');
+      } else if (state.activeTool === 'measure') {
+        state.drawing.measureCoords.push([lng, lat]);
+        updateMeasureLayer();
+      }
+    }
+
+    function dropPinAtCenter() {
+      if (!map) return;
+      const c = map.getCenter();
+      state.drawing.pins.push({
+        id: 'pin-' + Date.now(),
+        lng: c.lng,
+        lat: c.lat,
+        label: state.drawing.pinDefaults.label || 'Center Pin',
+        color: state.drawing.pinDefaults.color,
+        icon: state.drawing.pinDefaults.icon
+      });
+      syncDomMarkers();
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+      showToast('Added pin at map center');
+    }
+
+    function finishCurrentRoute() {
+      if (state.drawing.activeRouteCoords.length >= 2) {
+        state.drawing.routes.push({
+          id: 'route-' + Date.now(),
+          name: state.drawing.routeDefaults.name || `Route ${state.drawing.routes.length + 1}`,
+          color: state.drawing.routeDefaults.color,
+          width: state.drawing.routeDefaults.width,
+          style: state.drawing.routeDefaults.style,
+          coords: [...state.drawing.activeRouteCoords]
+        });
+        state.drawing.activeRouteCoords = [];
+        syncUserRoutesSource();
+        renderLegendKeyOverlay();
+        renderSidebarContent();
+        showToast('Saved custom route line');
+      }
+      setActiveTool('pan');
+    }
+
+    function syncUserRoutesSource() {
+      if (!map || !map.getSource('cartogram-user-routes')) return;
+      const features = state.drawing.routes.map(r => ({
+        type: 'Feature',
+        properties: { color: r.color, width: r.width, style: r.style },
+        geometry: { type: 'LineString', coordinates: r.coords }
+      }));
+
+      if (state.drawing.activeRouteCoords.length >= 2) {
+        features.push({
+          type: 'Feature',
+          properties: {
+            color: state.drawing.routeDefaults.color,
+            width: state.drawing.routeDefaults.width,
+            style: state.drawing.routeDefaults.style
+          },
+          geometry: { type: 'LineString', coordinates: state.drawing.activeRouteCoords }
+        });
+      }
+
+      map.getSource('cartogram-user-routes').setData({
+        type: 'FeatureCollection',
+        features
+      });
+    }
+
+    function haversineMeters(c1, c2) {
+      const R = 6371000;
+      const toRad = d => (d * Math.PI) / 180;
+      const dLat = toRad(c2[1] - c1[1]);
+      const dLon = toRad(c2[0] - c1[0]);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(c1[1])) * Math.cos(toRad(c2[1])) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function updateMeasureLayer() {
+      if (!map || !map.getSource('cartogram-measure-source')) return;
+      const pts = state.drawing.measureCoords;
+      const features = [];
+
+      if (pts.length >= 2) {
+        features.push({
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'LineString', coordinates: pts }
+        });
+      }
+      for (const p of pts) {
+        features.push({
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Point', coordinates: p }
+        });
+      }
+      map.getSource('cartogram-measure-source').setData({ type: 'FeatureCollection', features });
+
+      if (pts.length >= 2) {
+        let totalMeters = 0;
+        for (let i = 1; i < pts.length; i++) {
+          totalMeters += haversineMeters(pts[i - 1], pts[i]);
+        }
+        const helperText = document.getElementById('toolHelperText');
+        if (state.titleAndKey.scaleUnit === 'imperial') {
+          const miles = totalMeters / 1609.344;
+          helperText.textContent = `Measured Distance: ${miles >= 0.2 ? miles.toFixed(2) + ' mi' : Math.round(totalMeters * 3.28084) + ' ft'}`;
+        } else {
+          helperText.textContent = `Measured Distance: ${totalMeters >= 1000 ? (totalMeters / 1000).toFixed(2) + ' km' : Math.round(totalMeters) + ' m'}`;
+        }
+      }
+    }
+
+    function syncDomMarkers() {
+      for (const m of domMarkers) m.remove();
+      domMarkers = [];
+      if (!map) return;
+
+      state.drawing.pins.forEach((p) => {
+        const el = document.createElement('div');
+        el.className = 'custom-pin-marker flex items-center gap-1.5 px-2.5 py-1 rounded-full shadow-md border bg-white text-xs font-bold text-gray-900';
+        el.style.borderColor = p.color;
+        el.innerHTML = `<i class="ph ${p.icon} text-sm" style="color:${p.color}"></i><span>${escapeHtml(p.label)}</span>`;
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([p.lng, p.lat])
+          .addTo(map);
+        domMarkers.push(marker);
+      });
+
+      state.drawing.labels.forEach((lbl) => {
+        const el = document.createElement('div');
+        el.className = 'px-2 py-0.5 rounded bg-white/85 backdrop-blur-xs font-bold shadow-2xs border border-black/10';
+        el.style.color = lbl.color;
+        el.style.fontSize = `${lbl.size}px`;
+        el.textContent = lbl.text;
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([lbl.lng, lbl.lat])
+          .addTo(map);
+        domMarkers.push(marker);
+      });
+    }
+
+    function updatePlacedPinLabel(idx, val) {
+      if (state.drawing.pins[idx]) {
+        state.drawing.pins[idx].label = val;
+        syncDomMarkers();
+      }
+    }
+
+    function deletePlacedPin(idx) {
+      state.drawing.pins.splice(idx, 1);
+      syncDomMarkers();
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function updateDrawnRouteName(idx, val) {
+      if (state.drawing.routes[idx]) {
+        state.drawing.routes[idx].name = val;
+        renderLegendKeyOverlay();
+      }
+    }
+
+    function deleteDrawnRoute(idx) {
+      state.drawing.routes.splice(idx, 1);
+      syncUserRoutesSource();
+      renderLegendKeyOverlay();
+      renderSidebarContent();
+    }
+
+    function flyToPresetCity(name, lat, lng, zoom, subtitle) {
+      state.place.title = name;
+      state.place.subtitle = subtitle;
+      state.place.lat = lat;
+      state.place.lng = lng;
+      state.place.zoom = zoom;
+      if (map) {
+        map.flyTo({ center: [lng, lat], zoom, bearing: 0, duration: 1200 });
+      }
+      updateAllPosterOverlays();
+      renderSidebarContent();
+      showToast(`Moved to ${name}`);
+    }
+
+    function handleSearchTyping(query) {
+      clearTimeout(searchTimeout);
+      const box = document.getElementById('searchSuggestionsBox');
+      if (!query || query.trim().length < 2) {
+        box.classList.add('hidden');
+        return;
+      }
+      searchTimeout = setTimeout(() => executePlaceSearch(query.trim()), 280);
+    }
+
+    function handleSearchSubmit(e) {
+      e.preventDefault();
+      const q = document.getElementById('placeSearchInput').value.trim();
+      if (q) executePlaceSearch(q, true);
+    }
+
+    async function executePlaceSearch(query, jumpImmediately = false) {
+      const box = document.getElementById('searchSuggestionsBox');
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=6&q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          box.classList.remove('hidden');
+          box.innerHTML = `<div class="p-3 text-xs text-gray-500">No places found matching "${escapeHtml(query)}"</div>`;
+          return;
+        }
+
+        if (jumpImmediately) {
+          const first = data[0];
+          const parts = first.display_name.split(',');
+          const title = (parts[0] || query).trim();
+          const sub = parts.slice(1, 3).join(',').trim();
+          selectPlaceFromSearch(parseFloat(first.lat), parseFloat(first.lon), title, sub);
+          return;
+        }
+
+        box.classList.remove('hidden');
+        box.innerHTML = data.map(item => {
+          const parts = item.display_name.split(',');
+          const title = (parts[0] || query).trim();
+          const sub = parts.slice(1, 3).join(',').trim();
+          return `
+            <button onclick="selectPlaceFromSearch(${parseFloat(item.lat)}, ${parseFloat(item.lon)}, '${escapeHtml(title.replace(/'/g, ''))}', '${escapeHtml(sub.replace(/'/g, ''))}')" class="w-full px-4 py-2.5 text-left hover:bg-blue-50/60 border-b border-gray-100 last:border-none flex items-center justify-between gap-2">
+              <div class="truncate">
+                <div class="text-xs font-bold text-gray-900 truncate">${escapeHtml(title)}</div>
+                <div class="text-[11px] text-gray-500 truncate">${escapeHtml(sub)}</div>
+              </div>
+              <i class="ph ph-arrow-up-right text-gray-400 text-sm shrink-0"></i>
+            </button>
+          `;
+        }).join('');
+      } catch (e) {}
+    }
+
+    function selectPlaceFromSearch(lat, lng, title, subtitle) {
+      document.getElementById('searchSuggestionsBox').classList.add('hidden');
+      state.place.title = title;
+      state.place.subtitle = subtitle || 'Custom Map Poster';
+      state.place.lat = lat;
+      state.place.lng = lng;
+      if (map) {
+        map.flyTo({ center: [lng, lat], zoom: 13.2, duration: 1200 });
+      }
+      updateAllPosterOverlays();
+      renderSidebarContent();
+      showToast(`Framed ${title}`);
+    }
+
+    function zoomMapBy(delta) {
+      if (map) map.zoomTo(map.getZoom() + delta, { duration: 250 });
+    }
+
+    function resetNorthBearing() {
+      if (map) map.easeTo({ bearing: 0, pitch: 0, duration: 400 });
+    }
+
+    function scalePosterPreview(factor) {
+      state.posterZoom = Math.max(0.6, Math.min(2.2, state.posterZoom * factor));
+      const stage = document.getElementById('posterZoomStage');
+      if (stage) stage.style.transform = `scale(${state.posterZoom.toFixed(3)})`;
+    }
+
+    function resetViewToFit() {
+      state.posterZoom = 1;
+      const stage = document.getElementById('posterZoomStage');
+      if (stage) stage.style.transform = 'scale(1)';
+      updateAllPosterOverlays();
+    }
+
+    function openExportModal() {
+      const dispW = convertInToUnit(state.frame.widthIn, state.frame.unit);
+      const dispH = convertInToUnit(state.frame.heightIn, state.frame.unit);
+      document.getElementById('exportModalSizeLabel').textContent = `Size: ${dispW} × ${dispH} ${state.frame.unit}`;
+      document.getElementById('exportProgressLabel').textContent = 'Ready to download';
+      document.getElementById('exportModalBackdrop').classList.remove('hidden');
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportModalBackdrop').classList.add('hidden');
+    }
+
+    function applyCanvasClipShape(ctx, x, y, w, h, shape) {
+      ctx.beginPath();
+      if (shape === 'circle') {
+        const r = Math.min(w, h) * 0.48;
+        ctx.arc(x + w * 0.5, y + h * 0.5, r, 0, Math.PI * 2);
+      } else if (shape === 'arch') {
+        const r = w * 0.5;
+        ctx.moveTo(x, y + h);
+        ctx.lineTo(x, y + r);
+        ctx.arc(x + r, y + r, r, Math.PI, 0, false);
+        ctx.lineTo(x + w, y + h);
+        ctx.closePath();
+      } else if (shape === 'pill') {
+        const r = Math.min(w, h) * 0.5;
+        ctx.roundRect(x, y, w, h, r);
+      } else if (shape === 'rounded') {
+        ctx.roundRect(x, y, w, h, 28);
+      } else if (shape === 'hexagon') {
+        ctx.moveTo(x + w * 0.25, y);
+        ctx.lineTo(x + w * 0.75, y);
+        ctx.lineTo(x + w, y + h * 0.5);
+        ctx.lineTo(x + w * 0.75, y + h);
+        ctx.lineTo(x + w * 0.25, y + h);
+        ctx.lineTo(x, y + h * 0.5);
+        ctx.closePath();
+      } else {
+        ctx.rect(x, y, w, h);
+      }
+    }
+
+    function exportPosterAsPng(scaleMultiplier = 2) {
+      if (!map) return;
+      const prog = document.getElementById('exportProgressLabel');
+      if (prog) prog.textContent = 'Rendering high-resolution poster...';
+
+      map.triggerRepaint();
+      setTimeout(() => {
+        const paperEl = document.getElementById('posterPaperFrame');
+        const maskEl = document.getElementById('mapMaskContainer');
+        const paperRect = paperEl.getBoundingClientRect();
+        const maskRect = maskEl.getBoundingClientRect();
+
+        const S = scaleMultiplier;
+        const outW = Math.round(paperRect.width * S);
+        const outH = Math.round(paperRect.height * S);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = outW;
+        canvas.height = outH;
+        const ctx = canvas.getContext('2d');
+
+        ctx.fillStyle = state.frame.paperBg;
+        ctx.fillRect(0, 0, outW, outH);
+
+        const mapX = (maskRect.left - paperRect.left) * S;
+        const mapY = (maskRect.top - paperRect.top) * S;
+        const mapW = maskRect.width * S;
+        const mapH = maskRect.height * S;
+
+        ctx.save();
+        applyCanvasClipShape(ctx, mapX, mapY, mapW, mapH, state.frame.shape);
+        ctx.clip();
+
+        const glCanvas = map.getCanvas();
+        ctx.drawImage(glCanvas, mapX, mapY, mapW, mapH);
+
+        const contourCanv = document.getElementById('contourOverlayCanvas');
+        if (contourCanv && state.terrain.contours) {
+          ctx.drawImage(contourCanv, mapX, mapY, mapW, mapH);
+        }
+
+        const customLblCanv = document.getElementById('customMapLabelsCanvas');
+        if (customLblCanv && state.mapFonts.useCustomEngine) {
+          ctx.drawImage(customLblCanv, mapX, mapY, mapW, mapH);
+        }
+
+        if (state.frame.showCoordGrid) {
+          ctx.strokeStyle = state.frame.gridColor || state.frame.borderColor;
+          ctx.globalAlpha = state.frame.gridOpacity || 0.32;
+          ctx.lineWidth = 1 * S;
+          const step = (state.frame.gridSpacingPx || 85) * S;
+          for (let gx = mapX + step; gx < mapX + mapW - 10; gx += step) {
+            ctx.beginPath();
+            ctx.moveTo(gx, mapY);
+            ctx.lineTo(gx, mapY + mapH);
+            ctx.stroke();
+          }
+          for (let gy = mapY + step; gy < mapY + mapH - 10; gy += step) {
+            ctx.beginPath();
+            ctx.moveTo(mapX, gy);
+            ctx.lineTo(mapX + mapW, gy);
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+
+        for (const p of state.drawing.pins) {
+          const pt = map.project([p.lng, p.lat]);
+          const px = mapX + pt.x * S;
+          const py = mapY + pt.y * S;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(px, py, 7 * S, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2 * S;
+          ctx.stroke();
+
+          ctx.font = `bold ${11 * S}px "Plus Jakarta Sans", sans-serif`;
+          ctx.fillStyle = '#111827';
+          ctx.fillText(p.label, px + 11 * S, py + 4 * S);
+        }
+
+        for (const lbl of state.drawing.labels) {
+          const pt = map.project([lbl.lng, lbl.lat]);
+          const px = mapX + pt.x * S;
+          const py = mapY + pt.y * S;
+          ctx.font = `bold ${lbl.size * S}px "Plus Jakarta Sans", sans-serif`;
+          ctx.fillStyle = lbl.color;
+          ctx.textAlign = 'center';
+          ctx.fillText(lbl.text, px, py);
+        }
+
+        ctx.restore();
+
+        if (state.frame.showBorder && state.frame.shape !== 'fullbleed') {
+          ctx.save();
+          applyCanvasClipShape(ctx, mapX, mapY, mapW, mapH, state.frame.shape);
+          ctx.strokeStyle = state.frame.borderColor;
+          ctx.lineWidth = state.frame.borderWidth * S;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        if (state.titleAndKey.showLegend) {
+          const items = collectActiveLegendItems();
+          if (items.length > 0) {
+            const rowH = 18 * S;
+            const boxW = 190 * S;
+            const boxH = (items.length * 18 + 34) * S;
+            const lx = mapX + 14 * S;
+            const ly = mapY + mapH - boxH - 14 * S;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+            ctx.beginPath();
+            ctx.roundRect(lx, ly, boxW, boxH, 10 * S);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(17, 24, 39, 0.15)';
+            ctx.lineWidth = 1 * S;
+            ctx.stroke();
+
+            ctx.fillStyle = '#111827';
+            ctx.textAlign = 'left';
+            ctx.font = `bold ${11 * S}px "Plus Jakarta Sans", sans-serif`;
+            ctx.fillText(state.titleAndKey.legendTitle, lx + 12 * S, ly + 18 * S);
+
+            items.forEach((it, idx) => {
+              const iy = ly + (34 + idx * 18) * S;
+              ctx.fillStyle = it.color;
+              ctx.fillRect(lx + 12 * S, iy - 7 * S, 16 * S, 6 * S);
+              ctx.fillStyle = '#1f2937';
+              ctx.font = `500 ${10.5 * S}px "Plus Jakarta Sans", sans-serif`;
+              ctx.fillText(it.label, lx + 34 * S, iy - 1 * S);
+            });
+          }
+        }
+
+        if (state.titleAndKey.showScaleBar) {
+          const metrics = computeScaleMetrics();
+          const sbW = metrics.barPx * S;
+          const sbX = mapX + mapW - sbW - 18 * S;
+          const sbY = mapY + mapH - 22 * S;
+          ctx.fillStyle = 'rgba(255,255,255,0.92)';
+          ctx.beginPath();
+          ctx.roundRect(sbX - 8 * S, sbY - 16 * S, sbW + 16 * S, 26 * S, 6 * S);
+          ctx.fill();
+
+          ctx.fillStyle = '#1f2937';
+          ctx.fillRect(sbX, sbY, sbW * 0.5, 4 * S);
+          ctx.strokeStyle = '#1f2937';
+          ctx.lineWidth = 1 * S;
+          ctx.strokeRect(sbX, sbY, sbW, 4 * S);
+          ctx.font = `500 ${9.5 * S}px "JetBrains Mono", monospace`;
+          ctx.textAlign = 'right';
+          ctx.fillText(metrics.label, sbX + sbW, sbY - 4 * S);
+        }
+
+        if (state.titleAndKey.showTitle && state.frame.shape !== 'fullbleed') {
+          const fontName = state.titleAndKey.fontFamily === 'serif' ? '"Fraunces", serif' : '"Plus Jakarta Sans", sans-serif';
+          ctx.fillStyle = state.titleAndKey.textColor;
+          ctx.textAlign = 'center';
+          const cx = outW * 0.5;
+          const baseY = state.titleAndKey.layout === 'top' ? (mapY - 38 * S) : (mapY + mapH + 34 * S);
+
+          ctx.font = `bold ${26 * S}px ${fontName}`;
+          ctx.fillText(state.place.title, cx, baseY);
+
+          ctx.font = `500 ${11.5 * S}px "Plus Jakarta Sans", sans-serif`;
+          ctx.fillText(state.place.subtitle, cx, baseY + 18 * S);
+
+          if (state.titleAndKey.showCoords) {
+            ctx.font = `400 ${10 * S}px "JetBrains Mono", monospace`;
+            ctx.fillText(formatLatLngString(state.place.lat, state.place.lng), cx, baseY + 33 * S);
+          }
+        }
+
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Cartogram-${state.place.title.replace(/[^a-zA-Z0-9]+/g, '-')}-${scaleMultiplier}x.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          closeExportModal();
+          showToast('Downloaded high-resolution PNG poster');
+        }, 'image/png');
+      }, 120);
+    }
+
+    function exportPosterAsSvg() {
+      if (!map) return;
+      const paperEl = document.getElementById('posterPaperFrame');
+      const maskEl = document.getElementById('mapMaskContainer');
+      const paperRect = paperEl.getBoundingClientRect();
+      const maskRect = maskEl.getBoundingClientRect();
+
+      const W = Math.round(paperRect.width * 1.5);
+      const H = Math.round(paperRect.height * 1.5);
+      const S = 1.5;
+
+      const mapX = (maskRect.left - paperRect.left) * S;
+      const mapY = (maskRect.top - paperRect.top) * S;
+      const mapW = maskRect.width * S;
+      const mapH = maskRect.height * S;
+
+      const features = map.queryRenderedFeatures();
+      const waterPaths = [];
+      const parkPaths = [];
+      const roadPaths = [];
+      const railPaths = [];
+
+      const projectCoord = (coord) => {
+        const pt = map.project(coord);
+        return [mapX + pt.x * S, mapY + pt.y * S];
+      };
+
+      const ringToD = (ring, closed) => {
+        if (!ring || ring.length < 2) return '';
+        const pts = ring.map(projectCoord);
+        let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+        for (let i = 1; i < pts.length; i++) {
+          d += ` L ${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)}`;
+        }
+        return closed ? d + ' Z' : d;
+      };
+
+      for (const f of features.slice(0, 2500)) {
+        if (!f.geometry) continue;
+        const gType = f.geometry.type;
+        const sLayer = (f.sourceLayer || '').toLowerCase();
+        const lId = (f.layer && f.layer.id ? f.layer.id : '').toLowerCase();
+
+        let dStr = '';
+        if (gType === 'LineString') {
+          dStr = ringToD(f.geometry.coordinates, false);
+        } else if (gType === 'MultiLineString') {
+          dStr = f.geometry.coordinates.map(r => ringToD(r, false)).join(' ');
+        } else if (gType === 'Polygon') {
+          dStr = f.geometry.coordinates.map(r => ringToD(r, true)).join(' ');
+        }
+        if (!dStr) continue;
+
+        if (sLayer === 'water' || lId.includes('water')) {
+          waterPaths.push(dStr);
+        } else if (sLayer === 'park' || lId.includes('park') || lId.includes('green')) {
+          parkPaths.push(dStr);
+        } else if (lId.includes('rail') || lId.includes('transit')) {
+          railPaths.push(dStr);
+        } else if (sLayer === 'transportation') {
+          roadPaths.push(dStr);
+        }
+      }
+
+      const cx = W * 0.5;
+      const titleY = mapY + mapH + 36;
+
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+        <defs>
+          <clipPath id="posterMapClip">
+            <rect x="${mapX.toFixed(1)}" y="${mapY.toFixed(1)}" width="${mapW.toFixed(1)}" height="${mapH.toFixed(1)}" />
+          </clipPath>
+        </defs>
+        <rect x="0" y="0" width="${W}" height="${H}" fill="${state.frame.paperBg}" />
+        <g clip-path="url(#posterMapClip)">
+          <rect x="${mapX.toFixed(1)}" y="${mapY.toFixed(1)}" width="${mapW.toFixed(1)}" height="${mapH.toFixed(1)}" fill="${state.elements.land.color}" />
+          <path d="${waterPaths.join(' ')}" fill="${state.elements.water.color}" stroke="${state.elements.water.color}" stroke-width="1.5" />
+          <path d="${parkPaths.join(' ')}" fill="${state.elements.parks.color}" />
+          <path d="${roadPaths.join(' ')}" fill="none" stroke="${state.elements.streets.color}" stroke-width="1.6" stroke-linecap="round" />
+          <path d="${railPaths.join(' ')}" fill="none" stroke="${state.elements.railways.color}" stroke-width="${state.elements.railways.width}" stroke-linecap="round" />
+        </g>
+        <rect x="${mapX.toFixed(1)}" y="${mapY.toFixed(1)}" width="${mapW.toFixed(1)}" height="${mapH.toFixed(1)}" fill="none" stroke="${state.frame.borderColor}" stroke-width="${state.frame.borderWidth}" />
+        <text x="${cx}" y="${titleY}" font-family="Georgia, serif" font-size="28" font-weight="bold" text-anchor="middle" fill="${state.titleAndKey.textColor}">${escapeHtml(state.place.title)}</text>
+        <text x="${cx}" y="${titleY + 20}" font-family="sans-serif" font-size="12" text-anchor="middle" fill="${state.titleAndKey.textColor}">${escapeHtml(state.place.subtitle)}</text>
+      </svg>`;
+
+      const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Cartogram-${state.place.title.replace(/[^a-zA-Z0-9]+/g, '-')}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      closeExportModal();
+      showToast('Downloaded scalable Vector SVG artwork');
+    }
+
+    function exportPosterAsPdf() {
+      closeExportModal();
+      window.print();
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('statusToast');
+      const txt = document.getElementById('statusToastText');
+      if (!el || !txt) return;
+      txt.textContent = msg;
+      el.classList.remove('opacity-0', 'translate-y-2');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-2');
+      }, 2600);
+    }
+
+    document.addEventListener('click', (e) => {
+      const box = document.getElementById('searchSuggestionsBox');
+      const inp = document.getElementById('placeSearchInput');
+      if (box && !box.contains(e.target) && e.target !== inp) {
+        box.classList.add('hidden');
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      updateAllPosterOverlays();
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderSidebarContent();
+      updateAllPosterOverlays();
+      initMapLibre();
+    });
+  </script>
+</body>
+</html>
