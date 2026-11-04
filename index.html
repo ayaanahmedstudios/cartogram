@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cartogram</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cstyle%3Epath%7Bfill:%230f172a;%7D@media(prefers-color-scheme:dark)%7Bpath%7Bfill:%23ffffff;%7D%7D%3C/style%3E%3Cpath d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM172.42,72.84l-64,32a8.05,8.05,0,0,0-3.58,3.58l-32,64A8,8,0,0,0,83.58,183.16l64-32a8.05,8.05,0,0,0,3.58-3.58l32-64a8,8,0,0,0-10.74-10.74ZM138,138,97.89,158.11,118,118l40.15-20.07Z'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath fill='%233b82f6' d='M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm45.66-133.66a8,8,0,0,0-8.21-1.78l-56,24a8,8,0,0,0-4.29,4.29l-24,56a8,8,0,0,0,10.5,10.5l56-24a8,8,0,0,0,4.29-4.29l24-56A8,8,0,0,0,173.66,82.34Zm-34.9,46.42-31.5,13.5,13.5-31.5,31.5-13.5Z'/%3E%3C/svg%3E" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:wght@500;600;700&family=Syne:wght@600;700&family=Libre+Baskerville:wght@400;700&family=Outfit:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Playfair+Display:ital,wght@0,500;0,700;1,400&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:wght@500;600;700&family=Syne:wght@600;700&family=Libre+Baskerville:wght@400;700&family=Outfit:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=DM+Sans:wght@400;500;700&family=Cinzel:wght@500;700&family=Lora:wght@500;700&family=Merriweather:wght@400;700&family=EB+Garamond:wght@500;700&family=Spectral:wght@500;700&family=Bitter:wght@500;700&family=Prata&family=Abril+Fatface&family=DM+Serif+Display&family=Bricolage+Grotesque:wght@500;700&family=Oswald:wght@500;700&family=Bebas+Neue&family=Unbounded:wght@500;700&family=Caveat:wght@600&family=IBM+Plex+Mono:wght@500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <script>
     (function () {
       try {
@@ -68,9 +68,15 @@
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
     }
-    body {
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
       font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: #eef2f6;
+      background-color: #e8ecf2;
       color: #0f172a;
       overscroll-behavior: none;
       user-select: none;
@@ -78,18 +84,15 @@
       letter-spacing: -0.015em;
     }
     .thin-scroll::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+      width: 4px;
+      height: 4px;
     }
     .thin-scroll::-webkit-scrollbar-track {
       background: transparent;
     }
     .thin-scroll::-webkit-scrollbar-thumb {
-      background: rgba(100, 116, 139, 0.25);
+      background: rgba(100, 116, 139, 0.26);
       border-radius: 9999px;
-    }
-    .thin-scroll::-webkit-scrollbar-thumb:hover {
-      background: rgba(100, 116, 139, 0.45);
     }
     .no-scrollbar::-webkit-scrollbar {
       display: none;
@@ -103,34 +106,36 @@
       appearance: none;
       background: transparent;
       cursor: ew-resize;
+      touch-action: pan-y;
     }
     input[type="range"]::-webkit-slider-runnable-track {
-      height: 5px;
+      height: 6px;
       border-radius: 999px;
       background: #e2e8f0;
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       background: #0f172a;
-      margin-top: -5.5px;
-      border: 2px solid #ffffff;
-      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.3);
+      margin-top: -6px;
+      border: 2.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.28);
       transition: transform 0.12s ease;
     }
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.15);
+    input[type="range"]::-webkit-slider-thumb:active {
+      transform: scale(1.18);
+      background: #2563eb;
     }
     input[type="color"] {
       -webkit-appearance: none;
       appearance: none;
       border: none;
       padding: 0;
-      width: 26px;
-      height: 26px;
+      width: 28px;
+      height: 28px;
       border-radius: 999px;
       cursor: pointer;
       background: transparent;
@@ -140,16 +145,21 @@
       padding: 0;
     }
     input[type="color"]::-webkit-color-swatch {
-      border: 1.5px solid rgba(15, 23, 42, 0.16);
+      border: 2px solid rgba(15, 23, 42, 0.14);
       border-radius: 999px;
     }
     .workspace-dots {
-      background-color: #e9edf3;
+      background-color: #e8ecf2;
       background-image: radial-gradient(#cbd5e1 1.15px, transparent 1.15px);
       background-size: 22px 22px;
     }
+    .glass-surface {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
     .artboard-shadow {
-      box-shadow: 0 26px 65px -14px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(15, 23, 42, 0.06);
+      box-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(15, 23, 42, 0.06);
     }
     .maplibregl-ctrl-attrib,
     .maplibregl-ctrl-logo {
@@ -161,7 +171,7 @@
     }
     .draggable-overlay:hover,
     .draggable-overlay.selected-overlay {
-      outline: 1.5px dashed rgba(37, 99, 235, 0.75);
+      outline: 1.5px dashed rgba(37, 99, 235, 0.8);
       outline-offset: 2px;
     }
     .draggable-overlay:active,
@@ -172,7 +182,7 @@
     }
     .overlay-handle {
       opacity: 0;
-      transition: opacity 0.14s ease, transform 0.14s ease;
+      transition: opacity 0.14s ease;
     }
     .draggable-overlay:hover .overlay-handle,
     .draggable-overlay.selected-overlay .overlay-handle,
@@ -188,29 +198,25 @@
     #posterArtboard.resizing-frame .frame-handle {
       opacity: 1;
     }
-    .glass-surface {
-      background: rgba(255, 255, 255, 0.93);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      box-shadow: 0 12px 32px -6px rgba(15, 23, 42, 0.11), 0 2px 6px -1px rgba(15, 23, 42, 0.05);
+    @media (max-width: 767px) {
+      .frame-handle {
+        opacity: 0.75;
+      }
     }
   </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col select-none">
+<body class="relative w-full h-full workspace-dots overflow-hidden select-none">
 
-  <header class="fixed top-3 left-3 right-3 z-40 flex items-center justify-between gap-2 pointer-events-none">
-    <div class="glass-surface px-3.5 py-2 rounded-2xl flex items-center gap-2.5 pointer-events-auto shrink-0">
+  <header class="fixed top-2.5 sm:top-3.5 inset-x-2.5 sm:inset-x-5 z-40 flex items-center justify-between gap-2 pointer-events-none">
+    <div class="pointer-events-auto glass-surface border border-slate-200/90 rounded-2xl px-3 py-2 shadow-sm flex items-center gap-2 shrink-0">
       <span class="text-sm sm:text-base font-bold tracking-tight text-slate-900">Cartogram</span>
-      <span class="hidden md:inline-block w-px h-3.5 bg-slate-200"></span>
-      <button onclick="openPanel('frame')" class="hidden md:inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors cursor-pointer" title="Click to change size or units">
+      <button onclick="openPanel('frame')" class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-[11px] font-mono font-medium text-slate-600 transition-colors cursor-pointer" title="Canvas Dimensions">
         <span id="liveSizeText">500 × 650 px</span>
-        <i class="ph ph-caret-down text-[10px]"></i>
       </button>
     </div>
 
-    <div class="flex-1 max-w-md relative pointer-events-auto">
-      <form onsubmit="handleSearchSubmit(event)" class="glass-surface rounded-2xl flex items-center px-3 py-1.5 transition-all focus-within:ring-2 focus-within:ring-blue-600/25">
+    <div class="pointer-events-auto flex-1 max-w-md relative min-w-0">
+      <form onsubmit="handleSearchSubmit(event)" class="glass-surface border border-slate-200/90 rounded-2xl shadow-sm flex items-center px-3 py-1.5 transition-all focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/15">
         <i id="searchStatusIcon" class="ph ph-magnifying-glass text-slate-400 text-base shrink-0"></i>
         <input
           id="placeSearchInput"
@@ -219,57 +225,88 @@
           oninput="handleSearchTyping(this.value)"
           onkeydown="handleSearchKeydown(event)"
           onfocus="if(this.value.trim().length>=2) renderSearchDropdown(this.value.trim())"
-          placeholder="Search any city, address, park, or coordinates..."
-          class="w-full bg-transparent pl-2.5 pr-2 py-0.5 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none"
+          placeholder="Search city, address, or landmark..."
+          class="w-full bg-transparent pl-2 pr-1 py-0.5 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none min-w-0"
         />
-        <button type="button" id="clearSearchBtn" onclick="clearSearchInput()" class="hidden p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer" title="Clear search">
+        <button type="button" id="clearSearchBtn" onclick="clearSearchInput()" class="hidden p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer shrink-0">
           <i class="ph ph-x text-xs"></i>
         </button>
-        <button type="button" onclick="locateUserGPS()" class="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors shrink-0 cursor-pointer" title="Jump to my current location">
+        <button type="button" onclick="locateUserGPS()" class="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 rounded-lg transition-colors shrink-0 cursor-pointer" title="Use my current location">
           <i class="ph ph-crosshair text-sm"></i>
         </button>
       </form>
-      <div id="searchSuggestionsBox" class="hidden absolute left-0 right-0 top-full mt-2 bg-white/98 backdrop-blur-2xl border border-slate-200/90 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto thin-scroll"></div>
+      <div id="searchSuggestionsBox" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto thin-scroll"></div>
     </div>
 
-    <div class="flex items-center gap-2 pointer-events-auto shrink-0">
-      <button onclick="openExportModal()" class="glass-surface px-3.5 py-2 rounded-2xl bg-slate-900! hover:bg-slate-800! text-white border-slate-900! text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-md transition-all cursor-pointer">
+    <div class="pointer-events-auto flex items-center gap-1.5 shrink-0">
+      <div class="hidden lg:flex items-center glass-surface border border-slate-200/90 rounded-2xl p-1 shadow-sm">
+        <button onclick="zoomMapBy(-1)" class="w-7 h-7 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-700 cursor-pointer" title="Zoom Out">
+          <i class="ph ph-minus text-xs"></i>
+        </button>
+        <button onclick="zoomMapBy(1)" class="w-7 h-7 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-700 cursor-pointer" title="Zoom In">
+          <i class="ph ph-plus text-xs"></i>
+        </button>
+        <button onclick="toggle3DTiltQuick()" class="px-2 h-7 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-700 text-[11px] font-bold cursor-pointer" title="Toggle 3D Tilt">
+          3D
+        </button>
+        <button onclick="fitPosterToScreen()" class="w-7 h-7 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-700 cursor-pointer" title="Reset Frame Size">
+          <i class="ph ph-corners-out text-xs"></i>
+        </button>
+      </div>
+
+      <button onclick="openExportModal()" class="px-3.5 sm:px-4 py-2 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all cursor-pointer shrink-0">
         <i class="ph ph-export text-base"></i>
-        <span class="hidden sm:inline">Export</span>
+        <span>Export</span>
       </button>
     </div>
   </header>
 
-  <main id="workspaceViewport" onclick="handleWorkspaceBackgroundClick(event)" class="flex-1 w-full h-full workspace-dots relative flex items-center justify-center overflow-hidden p-4 sm:p-12">
+  <div id="mobileFloatingMapControls" class="lg:hidden fixed right-2.5 top-16 z-30 flex flex-col gap-1.5">
+    <div class="glass-surface border border-slate-200/90 rounded-2xl p-1 shadow-md flex flex-col gap-0.5">
+      <button onclick="zoomMapBy(1)" class="w-8 h-8 rounded-xl active:bg-slate-200 flex items-center justify-center text-slate-800 cursor-pointer" title="Zoom In">
+        <i class="ph ph-plus text-sm font-bold"></i>
+      </button>
+      <div class="h-px bg-slate-200/80 mx-1"></div>
+      <button onclick="zoomMapBy(-1)" class="w-8 h-8 rounded-xl active:bg-slate-200 flex items-center justify-center text-slate-800 cursor-pointer" title="Zoom Out">
+        <i class="ph ph-minus text-sm font-bold"></i>
+      </button>
+      <div class="h-px bg-slate-200/80 mx-1"></div>
+      <button onclick="toggle3DTiltQuick()" class="w-8 h-8 rounded-xl active:bg-slate-200 flex items-center justify-center text-slate-800 text-[10px] font-bold cursor-pointer" title="Toggle 3D">
+        3D
+      </button>
+    </div>
+  </div>
+
+  <main id="workspaceViewport" onclick="handleWorkspaceBackgroundClick(event)" class="w-full h-full flex items-center justify-center transition-all duration-200 ease-out pt-16 pb-20 px-4 sm:px-8">
 
     <div id="posterArtboard" class="artboard-shadow relative flex flex-col transition-colors duration-150" style="background-color: #faf8f5; width: 500px; height: 650px; padding: 20px; border-radius: 6px;">
 
-      <div onmousedown="startFrameResize(event, 'n')" ontouchstart="startFrameResize(event, 'n')" class="frame-handle absolute -top-2.5 left-1/2 -translate-x-1/2 h-5 w-14 flex items-center justify-center cursor-ns-resize" title="Drag to resize height">
-        <div class="h-1.5 w-9 rounded-full bg-slate-900/80 border border-white shadow-xs"></div>
+      <div onmousedown="startFrameResize(event, 'n')" ontouchstart="startFrameResize(event, 'n')" class="frame-handle absolute -top-3 left-1/2 -translate-x-1/2 h-6 w-16 flex items-center justify-center cursor-ns-resize" title="Drag to resize height">
+        <div class="h-1.5 w-9 rounded-full bg-slate-900/85 border border-white shadow-xs"></div>
       </div>
-      <div onmousedown="startFrameResize(event, 's')" ontouchstart="startFrameResize(event, 's')" class="frame-handle absolute -bottom-2.5 left-1/2 -translate-x-1/2 h-5 w-14 flex items-center justify-center cursor-ns-resize" title="Drag to resize height">
-        <div class="h-1.5 w-9 rounded-full bg-slate-900/80 border border-white shadow-xs"></div>
+      <div onmousedown="startFrameResize(event, 's')" ontouchstart="startFrameResize(event, 's')" class="frame-handle absolute -bottom-3 left-1/2 -translate-x-1/2 h-6 w-16 flex items-center justify-center cursor-ns-resize" title="Drag to resize height">
+        <div class="h-1.5 w-9 rounded-full bg-slate-900/85 border border-white shadow-xs"></div>
       </div>
-      <div onmousedown="startFrameResize(event, 'w')" ontouchstart="startFrameResize(event, 'w')" class="frame-handle absolute top-1/2 -left-2.5 -translate-y-1/2 w-5 h-14 flex items-center justify-center cursor-ew-resize" title="Drag to resize width">
-        <div class="w-1.5 h-9 rounded-full bg-slate-900/80 border border-white shadow-xs"></div>
+      <div onmousedown="startFrameResize(event, 'w')" ontouchstart="startFrameResize(event, 'w')" class="frame-handle absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-16 flex items-center justify-center cursor-ew-resize" title="Drag to resize width">
+        <div class="w-1.5 h-9 rounded-full bg-slate-900/85 border border-white shadow-xs"></div>
       </div>
-      <div onmousedown="startFrameResize(event, 'e')" ontouchstart="startFrameResize(event, 'e')" class="frame-handle absolute top-1/2 -right-2.5 -translate-y-1/2 w-5 h-14 flex items-center justify-center cursor-ew-resize" title="Drag to resize width">
-        <div class="w-1.5 h-9 rounded-full bg-slate-900/80 border border-white shadow-xs"></div>
+      <div onmousedown="startFrameResize(event, 'e')" ontouchstart="startFrameResize(event, 'e')" class="frame-handle absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-16 flex items-center justify-center cursor-ew-resize" title="Drag to resize width">
+        <div class="w-1.5 h-9 rounded-full bg-slate-900/85 border border-white shadow-xs"></div>
       </div>
-      <div onmousedown="startFrameResize(event, 'nw')" ontouchstart="startFrameResize(event, 'nw')" class="frame-handle absolute -top-2.5 -left-2.5 w-6 h-6 flex items-center justify-center cursor-nwse-resize" title="Drag corner to resize">
+      <div onmousedown="startFrameResize(event, 'nw')" ontouchstart="startFrameResize(event, 'nw')" class="frame-handle absolute -top-3 -left-3 w-7 h-7 flex items-center justify-center cursor-nwse-resize" title="Drag corner to resize">
         <div class="w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-md"></div>
       </div>
-      <div onmousedown="startFrameResize(event, 'ne')" ontouchstart="startFrameResize(event, 'ne')" class="frame-handle absolute -top-2.5 -right-2.5 w-6 h-6 flex items-center justify-center cursor-nesw-resize" title="Drag corner to resize">
+      <div onmousedown="startFrameResize(event, 'ne')" ontouchstart="startFrameResize(event, 'ne')" class="frame-handle absolute -top-3 -right-3 w-7 h-7 flex items-center justify-center cursor-nesw-resize" title="Drag corner to resize">
         <div class="w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-md"></div>
       </div>
-      <div onmousedown="startFrameResize(event, 'sw')" ontouchstart="startFrameResize(event, 'sw')" class="frame-handle absolute -bottom-2.5 -left-2.5 w-6 h-6 flex items-center justify-center cursor-nesw-resize" title="Drag corner to resize">
+      <div onmousedown="startFrameResize(event, 'sw')" ontouchstart="startFrameResize(event, 'sw')" class="frame-handle absolute -bottom-3 -left-3 w-7 h-7 flex items-center justify-center cursor-nesw-resize" title="Drag corner to resize">
         <div class="w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-md"></div>
       </div>
-      <div onmousedown="startFrameResize(event, 'se')" ontouchstart="startFrameResize(event, 'se')" class="frame-handle absolute -bottom-2.5 -right-2.5 w-6 h-6 flex items-center justify-center cursor-nwse-resize" title="Drag corner to resize">
+      <div onmousedown="startFrameResize(event, 'se')" ontouchstart="startFrameResize(event, 'se')" class="frame-handle absolute -bottom-3 -right-3 w-7 h-7 flex items-center justify-center cursor-nwse-resize" title="Drag corner to resize">
         <div class="w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-md"></div>
       </div>
 
-      <div id="liveFrameResizeHud" class="hidden absolute -top-10 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-[11px] font-mono font-semibold px-3 py-1 rounded-full shadow-lg whitespace-nowrap pointer-events-none">
+      <div id="liveFrameResizeHud" class="hidden absolute -top-9 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-[11px] font-mono font-semibold px-3 py-1 rounded-full shadow-lg whitespace-nowrap pointer-events-none">
         500 × 650 px
       </div>
 
@@ -285,8 +322,8 @@
           onclick="selectOverlayElement(event, 'title')"
           ondblclick="openPanel('text')"
           class="draggable-overlay absolute z-20 px-4 py-2.5 rounded-2xl text-center select-none"
-          style="left: 50%; bottom: 16px; transform: translateX(-50%) scale(1); background-color: rgba(250, 248, 245, 0.92); backdrop-filter: blur(8px); border: 1px solid rgba(15, 23, 42, 0.12);"
-          title="Drag to move title, drag blue handle to resize, double-click to edit"
+          style="left: 50%; bottom: 14px; transform: translateX(-50%) scale(1); background-color: rgba(250, 248, 245, 0.92); backdrop-filter: blur(8px); border: 1px solid rgba(15, 23, 42, 0.12);"
+          title="Drag to move title, drag corner handle to resize, double-click to edit"
         >
           <div id="posterTitleText" class="font-bold tracking-tight leading-tight whitespace-nowrap" style="font-family: 'Instrument Serif', Georgia, serif; font-size: 28px; color: #0f172a;">Amsterdam</div>
           <div id="posterSubtitleText" class="font-medium opacity-75 mt-0.5 whitespace-nowrap" style="font-size: 11px; color: #0f172a;">North Holland, Netherlands</div>
@@ -294,7 +331,7 @@
           <div
             onmousedown="startOverlayScaleResize(event, 'title', 'se')"
             ontouchstart="startOverlayScaleResize(event, 'title', 'se')"
-            class="overlay-handle absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow-sm cursor-nwse-resize"
+            class="overlay-handle absolute -bottom-2 -right-2 w-5 h-5 rounded-full bg-blue-600 border-2 border-white shadow-sm cursor-nwse-resize"
             title="Drag to scale Title size"
           ></div>
         </div>
@@ -306,7 +343,7 @@
           onclick="selectOverlayElement(event, 'legend')"
           ondblclick="openPanel('text')"
           class="draggable-overlay absolute z-20 rounded-xl p-2.5 select-none"
-          style="left: 14px; top: 14px; width: 172px; transform: scale(1); transform-origin: top left; background-color: rgba(255, 255, 255, 0.92); backdrop-filter: blur(8px); border: 1px solid rgba(15, 23, 42, 0.12);"
+          style="left: 12px; top: 12px; width: 172px; transform: scale(1); transform-origin: top left; background-color: rgba(255, 255, 255, 0.92); backdrop-filter: blur(8px); border: 1px solid rgba(15, 23, 42, 0.12);"
           title="Drag to move Map Key, drag side or corner handles to resize"
         >
           <div class="flex items-center justify-between pb-1 mb-1.5 border-b border-slate-200/80 gap-2">
@@ -318,13 +355,13 @@
           <div
             onmousedown="startOverlayScaleResize(event, 'legend', 'e')"
             ontouchstart="startOverlayScaleResize(event, 'legend', 'e')"
-            class="overlay-handle absolute top-1/2 -right-1.5 -translate-y-1/2 w-2.5 h-6 rounded-full bg-blue-600 border border-white shadow-xs cursor-ew-resize"
+            class="overlay-handle absolute top-1/2 -right-2 -translate-y-1/2 w-3 h-7 rounded-full bg-blue-600 border border-white shadow-xs cursor-ew-resize"
             title="Drag to widen or narrow Map Key"
           ></div>
           <div
             onmousedown="startOverlayScaleResize(event, 'legend', 'se')"
             ontouchstart="startOverlayScaleResize(event, 'legend', 'se')"
-            class="overlay-handle absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow-sm cursor-nwse-resize"
+            class="overlay-handle absolute -bottom-2 -right-2 w-5 h-5 rounded-full bg-blue-600 border-2 border-white shadow-sm cursor-nwse-resize"
             title="Drag corner to scale Map Key size"
           ></div>
         </div>
@@ -335,7 +372,7 @@
           ontouchstart="startOverlayDrag(event, 'compass')"
           ondblclick="resetNorthBearing()"
           class="draggable-overlay absolute z-20 w-9 h-9 rounded-full flex items-center justify-center select-none"
-          style="right: 14px; top: 14px; background-color: rgba(255, 255, 255, 0.92); border: 1px solid rgba(15, 23, 42, 0.12);"
+          style="right: 12px; top: 12px; background-color: rgba(255, 255, 255, 0.92); border: 1px solid rgba(15, 23, 42, 0.12);"
           title="Drag to move compass, double-click to reset North"
         >
           <i id="compassNeedleIcon" class="ph ph-compass text-lg text-slate-800 transition-transform"></i>
@@ -347,7 +384,7 @@
           ontouchstart="startOverlayDrag(event, 'scale')"
           ondblclick="toggleScaleUnitsQuick()"
           class="draggable-overlay absolute z-20 px-2.5 py-1.5 rounded-lg flex flex-col items-end gap-1 select-none"
-          style="right: 14px; bottom: 16px; background-color: rgba(255, 255, 255, 0.92); border: 1px solid rgba(15, 23, 42, 0.12);"
+          style="right: 12px; bottom: 14px; background-color: rgba(255, 255, 255, 0.92); border: 1px solid rgba(15, 23, 42, 0.12);"
           title="Drag to move scale bar, double-click to toggle km / mi"
         >
           <div class="flex items-center justify-between w-full text-[9px] font-mono font-semibold text-slate-700 gap-2 whitespace-nowrap">
@@ -371,85 +408,89 @@
 
     </div>
 
-    <div id="featureInspectorPill" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-40 glass-surface px-3.5 py-2 rounded-2xl flex items-center gap-3 shadow-xl"></div>
-
-    <div id="activeToolBanner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white px-4 py-2 rounded-full shadow-xl text-xs font-medium flex items-center gap-3 whitespace-nowrap">
-      <span id="activeToolBannerText">Click on the map</span>
-      <button id="finishDrawingBtn" onclick="finishActiveShape()" class="hidden px-2.5 py-0.5 rounded-full bg-blue-500 hover:bg-blue-400 text-white font-semibold cursor-pointer">Finish</button>
-      <button onclick="setActiveTool('pan')" class="px-2.5 py-0.5 rounded-full bg-white/15 hover:bg-white/25 text-white cursor-pointer">Done</button>
-    </div>
-
-    <div class="hidden sm:flex fixed right-4 top-1/2 -translate-y-1/2 z-30 flex-col gap-1 glass-surface p-1.5 rounded-2xl">
-      <button onclick="zoomMapBy(1)" class="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-700 cursor-pointer" title="Zoom In">
-        <i class="ph ph-plus text-base"></i>
-      </button>
-      <button onclick="zoomMapBy(-1)" class="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-700 cursor-pointer" title="Zoom Out">
-        <i class="ph ph-minus text-base"></i>
-      </button>
-      <div class="h-px bg-slate-200/80 my-0.5"></div>
-      <button onclick="toggle3DTiltQuick()" id="quick3DBtn" class="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-700 text-[11px] font-bold cursor-pointer" title="Toggle 3D Perspective">
-        3D
-      </button>
-      <button onclick="fitPosterToScreen()" class="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-700 cursor-pointer" title="Reset Frame Size to Default">
-        <i class="ph ph-corners-out text-base"></i>
-      </button>
-    </div>
-
-    <div id="statusToast" class="pointer-events-none opacity-0 translate-y-2 transition-all duration-200 fixed top-16 right-4 z-50 bg-slate-900 text-white px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-medium whitespace-nowrap">
-      <i class="ph ph-check-circle text-emerald-400 text-base"></i>
-      <span id="statusToastText">Updated</span>
-    </div>
-
   </main>
 
-  <div id="floatingPanelCard" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-40 w-[94vw] max-w-[430px] max-h-[68vh] bg-white/96 backdrop-blur-2xl border border-slate-200/90 rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-all duration-200">
-    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
-      <div class="flex items-center gap-2">
-        <i id="panelHeaderIcon" class="ph ph-palette text-base text-slate-800"></i>
-        <h3 id="panelHeaderTitle" class="text-xs sm:text-sm font-bold text-slate-900">Colors & Theme</h3>
-      </div>
-      <button onclick="closePanel()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200/80 flex items-center justify-center text-slate-600 cursor-pointer">
-        <i class="ph ph-x text-xs"></i>
-      </button>
-    </div>
-    <div id="panelBodyContent" class="p-4 overflow-y-auto thin-scroll space-y-4 flex-1"></div>
+  <div id="activeToolBanner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 text-white px-4 py-1.5 rounded-full shadow-xl text-xs font-medium flex items-center gap-2.5 whitespace-nowrap">
+    <span id="activeToolBannerText">Tap on the map</span>
+    <button id="finishDrawingBtn" onclick="finishActiveShape()" class="hidden px-2.5 py-0.5 rounded-full bg-blue-500 hover:bg-blue-400 text-white font-semibold cursor-pointer">Finish</button>
+    <button onclick="setActiveTool('pan')" class="px-2.5 py-0.5 rounded-full bg-white/15 hover:bg-white/25 text-white cursor-pointer">Done</button>
   </div>
 
-  <nav class="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 glass-surface p-1.5 rounded-2xl flex items-center gap-1 max-w-[96vw] overflow-x-auto no-scrollbar">
-    <button onclick="togglePanel('view')" id="dockBtn-view" class="px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all whitespace-nowrap cursor-pointer">
-      <i class="ph ph-globe-hemisphere-west text-base"></i>
+  <div id="featureInspectorPill" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-40 glass-surface border border-slate-200/95 rounded-2xl px-3.5 py-2 shadow-2xl flex items-center gap-3 max-w-[92vw]"></div>
+
+  <section
+    id="studioDrawerSheet"
+    class="hidden fixed z-30 glass-surface border border-slate-200/90 shadow-2xl flex flex-col overflow-hidden transition-all duration-200
+           inset-x-0 bottom-[64px] rounded-t-3xl max-h-[46dvh]
+           md:inset-x-auto md:left-5 md:top-20 md:bottom-24 md:w-[360px] md:max-h-none md:rounded-3xl"
+  >
+    <div
+      ontouchstart="startMobileSheetSwipe(event)"
+      onmousedown="startMobileSheetSwipe(event)"
+      class="md:hidden pt-2 pb-1 flex flex-col items-center justify-center cursor-ns-resize shrink-0"
+    >
+      <div class="w-10 h-1.5 rounded-full bg-slate-300"></div>
+    </div>
+
+    <div class="px-4 py-2.5 md:py-3 border-b border-slate-200/70 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2">
+        <i id="panelHeaderIcon" class="ph ph-palette text-base text-slate-900"></i>
+        <h3 id="panelHeaderTitle" class="text-xs sm:text-sm font-bold text-slate-900">Colors & Palette</h3>
+      </div>
+      <div class="flex items-center gap-1">
+        <button onclick="toggleMobileSheetHeight()" id="sheetExpandBtn" class="md:hidden px-2 py-1 rounded-lg bg-slate-100 active:bg-slate-200 text-[11px] font-semibold text-slate-600 flex items-center gap-1 cursor-pointer">
+          <i id="sheetExpandIcon" class="ph ph-arrows-out-simple text-xs"></i>
+          <span id="sheetExpandText">Expand</span>
+        </button>
+        <button onclick="closePanel()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200/80 flex items-center justify-center text-slate-600 cursor-pointer" title="Close">
+          <i class="ph ph-x text-xs font-bold"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="panelBodyContent" class="p-3.5 sm:p-4 overflow-y-auto thin-scroll space-y-3.5 flex-1"></div>
+  </section>
+
+  <nav class="fixed bottom-0 md:bottom-4 inset-x-0 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 z-40 glass-surface border-t md:border border-slate-200/90 md:rounded-2xl px-1.5 py-1.5 md:p-1.5 shadow-xl flex items-center justify-around md:justify-center gap-0.5 sm:gap-1 pb-[ max(0.375rem,env(safe-area-inset-bottom)) ]">
+    <button onclick="togglePanel('view')" id="dockBtn-view" class="flex-1 md:flex-initial px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-semibold transition-all cursor-pointer">
+      <i class="ph ph-globe-hemisphere-west text-lg sm:text-base"></i>
       <span>View</span>
     </button>
-    <button onclick="togglePanel('style')" id="dockBtn-style" class="px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all whitespace-nowrap cursor-pointer">
-      <i class="ph ph-palette text-base"></i>
+    <button onclick="togglePanel('style')" id="dockBtn-style" class="flex-1 md:flex-initial px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-semibold transition-all cursor-pointer">
+      <i class="ph ph-palette text-lg sm:text-base"></i>
       <span>Colors</span>
     </button>
-    <button onclick="togglePanel('layers')" id="dockBtn-layers" class="px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all whitespace-nowrap cursor-pointer">
-      <i class="ph ph-stack text-base"></i>
+    <button onclick="togglePanel('layers')" id="dockBtn-layers" class="flex-1 md:flex-initial px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-semibold transition-all cursor-pointer">
+      <i class="ph ph-stack text-lg sm:text-base"></i>
       <span>Elements</span>
     </button>
-    <button onclick="togglePanel('frame')" id="dockBtn-frame" class="px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all whitespace-nowrap cursor-pointer">
-      <i class="ph ph-frame-corners text-base"></i>
+    <button onclick="togglePanel('frame')" id="dockBtn-frame" class="flex-1 md:flex-initial px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-semibold transition-all cursor-pointer">
+      <i class="ph ph-frame-corners text-lg sm:text-base"></i>
       <span>Frame</span>
     </button>
-    <button onclick="togglePanel('text')" id="dockBtn-text" class="px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all whitespace-nowrap cursor-pointer">
-      <i class="ph ph-text-aa text-base"></i>
+    <button onclick="togglePanel('text')" id="dockBtn-text" class="flex-1 md:flex-initial px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-semibold transition-all cursor-pointer">
+      <i class="ph ph-text-aa text-lg sm:text-base"></i>
       <span>Key & Fonts</span>
     </button>
-    <button onclick="togglePanel('draw')" id="dockBtn-draw" class="px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all whitespace-nowrap cursor-pointer">
-      <i class="ph ph-map-pin text-base"></i>
-      <span>Pins & Draw</span>
+    <button onclick="togglePanel('draw')" id="dockBtn-draw" class="flex-1 md:flex-initial px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-semibold transition-all cursor-pointer">
+      <i class="ph ph-map-pin text-lg sm:text-base"></i>
+      <span>Pin & Draw</span>
     </button>
   </nav>
 
-  <div id="exportModalBackdrop" onclick="if(event.target===this)closeExportModal()" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-    <div class="bg-white border border-slate-200 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl">
+  <div id="statusToast" class="pointer-events-none opacity-0 translate-y-2 transition-all duration-200 fixed top-16 right-4 z-50 bg-slate-900 text-white px-3.5 py-2 rounded-xl shadow-xl flex items-center gap-2 text-xs font-medium whitespace-nowrap">
+    <i class="ph ph-check-circle text-emerald-400 text-base"></i>
+    <span id="statusToastText">Updated</span>
+  </div>
+
+  <div id="exportModalBackdrop" onclick="if(event.target===this)closeExportModal()" class="hidden fixed inset-0 bg-slate-900/45 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white border border-slate-200 rounded-t-3xl sm:rounded-3xl max-w-md w-full overflow-hidden shadow-2xl">
       <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
         <div>
-          <h2 class="text-sm font-bold text-slate-900">Export Map</h2>
+          <h2 class="text-sm font-bold text-slate-900">Export Map Poster</h2>
           <p class="text-xs text-slate-500">High-resolution raster, vector SVG, or GeoJSON</p>
         </div>
-        <button onclick="closeExportModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer">
+        <button onclick="closeExportModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer">
           <i class="ph ph-x text-sm"></i>
         </button>
       </div>
@@ -464,9 +505,9 @@
             </div>
           </div>
           <div class="grid grid-cols-3 gap-2">
-            <button onclick="exportPosterAsPng(1)" class="py-2 rounded-xl bg-white hover:bg-slate-100 text-xs font-medium text-slate-700 border border-slate-200 cursor-pointer">1x Standard</button>
-            <button onclick="exportPosterAsPng(2)" class="py-2 rounded-xl bg-white hover:bg-slate-100 text-xs font-semibold text-slate-900 border border-slate-300 cursor-pointer">2x Crisp</button>
-            <button onclick="exportPosterAsPng(4)" class="py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-white cursor-pointer">4x Ultra Print</button>
+            <button onclick="exportPosterAsPng(1)" class="py-2.5 rounded-xl bg-white hover:bg-slate-100 text-xs font-medium text-slate-700 border border-slate-200 cursor-pointer">1x Web</button>
+            <button onclick="exportPosterAsPng(2)" class="py-2.5 rounded-xl bg-white hover:bg-slate-100 text-xs font-semibold text-slate-900 border border-slate-300 cursor-pointer">2x Crisp</button>
+            <button onclick="exportPosterAsPng(4)" class="py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white cursor-pointer">4x Print</button>
           </div>
         </div>
 
@@ -489,7 +530,7 @@
         </div>
       </div>
 
-      <div class="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <span id="exportDimensionsInfo">500 × 650 px</span>
         <span id="exportProgressText">Ready</span>
       </div>
@@ -498,7 +539,7 @@
 
   <script>
     const GOOGLE_FONTS_DIRECTORY = [
-      'Instrument Serif', 'Geist', 'Geist Mono', 'General Sans', 'DM Sans', 'Playfair Display', 'Space Grotesk',
+      'Instrument Serif', 'Geist', 'Geist Mono', 'DM Sans', 'Playfair Display', 'Space Grotesk',
       'Cormorant Garamond', 'Syne', 'Libre Baskerville', 'Outfit', 'JetBrains Mono', 'Fraunces', 'Cinzel',
       'Lora', 'Merriweather', 'EB Garamond', 'Spectral', 'Crimson Pro', 'Bitter', 'Vollkorn', 'Zilla Slab',
       'Bodoni Moda', 'Prata', 'Abril Fatface', 'DM Serif Display', 'Yeseva One', 'Cardo', 'Newsreader',
@@ -507,12 +548,12 @@
       'Caveat', 'Pacifico', 'Dancing Script', 'Shadows Into Light', 'Permanent Marker', 'Architects Daughter',
       'IBM Plex Mono', 'Space Mono', 'Fira Code', 'Source Code Pro', 'Inconsolata', 'Courier Prime',
       'Poppins', 'Montserrat', 'Roboto', 'Open Sans', 'Lato', 'PT Serif', 'PT Sans', 'Noto Serif',
-      'Noto Sans', 'nanum Myeongjo', 'Crimson Text', 'Old Standard TT', 'Domine', 'Arvo', 'Rokkitt',
-      'Slabo 27px', 'Faustina', 'Literata', 'Petrona', 'piazzolla', 'Sora', 'Urbanist', 'Lexend',
+      'Noto Sans', 'Crimson Text', 'Old Standard TT', 'Domine', 'Arvo', 'Rokkitt',
+      'Faustina', 'Literata', 'Petrona', 'Sora', 'Urbanist', 'Lexend',
       'Red Hat Display', 'Red Hat Mono', 'Public Sans', 'Chivo', 'Barlow', 'Barlow Condensed',
       'Fjalla One', 'Teko', 'Russo One', 'Alfa Slab One', 'Ultra', 'Rozha One', 'Cinzel Decorative',
-      ' Marcellus', 'Tenor Sans', 'Julius Sans One', 'Poiret One', 'Forum', 'Gilda Display', 'Vidaloka',
-      'Suranna', 'Italiana', 'Belleza', 'Federo', 'Antic Didone', 'Oranienbaum', ' Rufina', 'Pridi',
+      'Marcellus', 'Tenor Sans', 'Julius Sans One', 'Poiret One', 'Forum', 'Gilda Display', 'Vidaloka',
+      'Suranna', 'Italiana', 'Belleza', 'Federo', 'Antic Didone', 'Oranienbaum', 'Rufina', 'Pridi',
       'Taviraj', 'Trirong', 'Maitree', 'Neuton', 'Glegoo', 'Kameron', 'Lustria', 'Ovo', 'Poly',
       'Alike', 'Amiri', 'Scheherazade New', 'Frank Ruhl Libre', 'David Libre', 'Miriam Libre',
       'Secular One', 'Alef', 'Heebo', 'Assistant', 'Varela Round', 'Comfortaa', 'Fredoka', 'Signika',
@@ -526,9 +567,14 @@
     ].map(s => s.trim()).filter((v, i, a) => v && a.indexOf(v) === i);
 
     const loadedGoogleFonts = new Set([
-      'General Sans', 'Geist', 'Geist Mono', 'Instrument Serif', 'Playfair Display', 'Space Grotesk',
-      'JetBrains Mono', 'Cormorant Garamond', 'Syne', 'Libre Baskerville', 'Outfit', 'Fraunces', 'DM Sans'
+      'Geist', 'Geist Mono', 'Instrument Serif', 'Playfair Display', 'Space Grotesk',
+      'JetBrains Mono', 'Cormorant Garamond', 'Syne', 'Libre Baskerville', 'Outfit',
+      'Fraunces', 'DM Sans', 'Cinzel', 'Lora', 'Merriweather', 'EB Garamond', 'Spectral',
+      'Bitter', 'Prata', 'Abril Fatface', 'DM Serif Display', 'Bricolage Grotesque',
+      'Oswald', 'Bebas Neue', 'Unbounded', 'Caveat', 'IBM Plex Mono', 'Space Mono'
     ]);
+
+    let fontPreviewObserver = null;
 
     async function fetchCompleteGoogleFontsList() {
       try {
@@ -540,6 +586,9 @@
               GOOGLE_FONTS_DIRECTORY.push(fontName);
             }
           });
+          if (state.openPanelId === 'text') {
+            updateFontResultsList();
+          }
         }
       } catch (e) {}
     }
@@ -553,6 +602,30 @@
       const familyParam = clean.replace(/\s+/g, '+') + ':wght@400;500;600;700';
       link.href = `https://fonts.googleapis.com/css2?family=${familyParam}&display=swap`;
       document.head.appendChild(link);
+    }
+
+    function setupFontPreviewObserver() {
+      if (fontPreviewObserver) {
+        fontPreviewObserver.disconnect();
+      }
+      const box = document.getElementById('googleFontsListBox');
+      if (!box || !('IntersectionObserver' in window)) return;
+
+      fontPreviewObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const fname = entry.target.getAttribute('data-font-name');
+            if (fname) {
+              loadGoogleFontDynamically(fname);
+            }
+            fontPreviewObserver.unobserve(entry.target);
+          }
+        });
+      }, { root: box, rootMargin: '120px' });
+
+      box.querySelectorAll('[data-font-name]').forEach(btn => {
+        fontPreviewObserver.observe(btn);
+      });
     }
 
     const COLOR_THEMES = {
@@ -754,7 +827,7 @@
       { id: 'portrait', label: 'Portrait', w: 500, h: 650 },
       { id: 'square', label: 'Square', w: 560, h: 560 },
       { id: 'landscape', label: 'Landscape', w: 660, h: 500 },
-      { id: 'story', label: 'Mobile 9:16', w: 390, h: 680 },
+      { id: 'story', label: 'Phone 9:16', w: 390, h: 680 },
       { id: 'wide', label: 'Wide 16:9', w: 680, h: 382 },
       { id: 'iso', label: 'ISO Print', w: 480, h: 678 }
     ];
@@ -772,6 +845,7 @@
 
     const state = {
       openPanelId: null,
+      mobileSheetExpanded: false,
       activeTool: 'pan',
       activeTheme: 'editorial',
       expandedLayerKey: null,
@@ -1047,28 +1121,27 @@
 
     function showFeatureInspectorPill(elementKey) {
       state.inspectedLayerKey = elementKey;
-      const pill = document.getElementById('featureInspectorPill');
+      const bar = document.getElementById('featureInspectorPill');
       const el = state.elements[elementKey];
-      if (!pill || !el) return;
+      if (!bar || !el) return;
 
-      pill.classList.remove('hidden');
-      pill.innerHTML = `
-        <div class="flex items-center gap-2">
+      bar.classList.remove('hidden');
+      bar.innerHTML = `
+        <div class="flex items-center gap-2 min-w-0">
           <input type="color" value="${el.color}" oninput="updateElementColor('${elementKey}', this.value)" title="Change color" />
-          <span class="text-xs font-bold text-slate-900">${el.name}</span>
+          <span class="text-xs font-bold text-slate-900 truncate">${el.name}</span>
         </div>
-        ${typeof el.width === 'number' ? `
-          <div class="flex items-center gap-1.5">
-            <span class="text-[10px] font-medium text-slate-500">Size</span>
+        <div class="flex items-center gap-2 shrink-0">
+          ${typeof el.width === 'number' ? `
             <input type="range" min="0.5" max="6" step="0.2" value="${el.width}" oninput="updateElementWidth('${elementKey}', parseFloat(this.value))" class="w-16" />
-          </div>
-        ` : ''}
-        <button onclick="toggleLayerVisible('${elementKey}'); showFeatureInspectorPill('${elementKey}')" class="px-2 py-1 rounded-lg text-[11px] font-semibold cursor-pointer ${el.visible ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'}">
-          ${el.visible ? 'Shown' : 'Hidden'}
-        </button>
-        <button onclick="document.getElementById('featureInspectorPill').classList.add('hidden')" class="p-1 text-slate-400 hover:text-slate-700 cursor-pointer">
-          <i class="ph ph-x text-xs"></i>
-        </button>
+          ` : ''}
+          <button onclick="toggleLayerVisible('${elementKey}'); showFeatureInspectorPill('${elementKey}')" class="px-2.5 py-1 rounded-xl text-[11px] font-semibold cursor-pointer ${el.visible ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'}">
+            ${el.visible ? 'Shown' : 'Hidden'}
+          </button>
+          <button onclick="document.getElementById('featureInspectorPill').classList.add('hidden')" class="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer">
+            <i class="ph ph-x text-xs"></i>
+          </button>
+        </div>
       `;
     }
 
@@ -1794,6 +1867,67 @@
       window.removeEventListener('touchend', onFrameResizeEnd);
     }
 
+    let sheetSwipeStartY = null;
+    function startMobileSheetSwipe(e) {
+      const pt = e.touches ? e.touches[0] : e;
+      sheetSwipeStartY = pt.clientY;
+      window.addEventListener('touchmove', onMobileSheetSwipeMove, { passive: true });
+      window.addEventListener('touchend', onMobileSheetSwipeEnd);
+      window.addEventListener('mousemove', onMobileSheetSwipeMove);
+      window.addEventListener('mouseup', onMobileSheetSwipeEnd);
+    }
+
+    function onMobileSheetSwipeMove(e) {
+      if (sheetSwipeStartY === null) return;
+      const pt = e.touches ? e.touches[0] : e;
+      const dy = pt.clientY - sheetSwipeStartY;
+      if (dy > 65) {
+        sheetSwipeStartY = null;
+        if (state.mobileSheetExpanded) {
+          state.mobileSheetExpanded = false;
+          syncSheetHeightUI();
+        } else {
+          closePanel();
+        }
+      } else if (dy < -55 && !state.mobileSheetExpanded) {
+        sheetSwipeStartY = null;
+        state.mobileSheetExpanded = true;
+        syncSheetHeightUI();
+      }
+    }
+
+    function onMobileSheetSwipeEnd() {
+      sheetSwipeStartY = null;
+      window.removeEventListener('touchmove', onMobileSheetSwipeMove);
+      window.removeEventListener('touchend', onMobileSheetSwipeEnd);
+      window.removeEventListener('mousemove', onMobileSheetSwipeMove);
+      window.removeEventListener('mouseup', onMobileSheetSwipeEnd);
+    }
+
+    function toggleMobileSheetHeight() {
+      state.mobileSheetExpanded = !state.mobileSheetExpanded;
+      syncSheetHeightUI();
+    }
+
+    function syncSheetHeightUI() {
+      const sheet = document.getElementById('studioDrawerSheet');
+      const icon = document.getElementById('sheetExpandIcon');
+      const txt = document.getElementById('sheetExpandText');
+      if (!sheet) return;
+      if (state.mobileSheetExpanded) {
+        sheet.classList.remove('max-h-[46dvh]');
+        sheet.classList.add('max-h-[76dvh]');
+        if (icon) icon.className = 'ph ph-arrows-in-simple text-xs';
+        if (txt) txt.textContent = 'Compact';
+      } else {
+        sheet.classList.add('max-h-[46dvh]');
+        sheet.classList.remove('max-h-[76dvh]');
+        if (icon) icon.className = 'ph ph-arrows-out-simple text-xs';
+        if (txt) txt.textContent = 'Expand';
+      }
+      updatePosterArtboard();
+    }
+
     function getShapeClipPathCss(shape) {
       if (shape === 'circle') return 'circle(48% at 50% 50%)';
       if (shape === 'arch') return 'inset(0% 0% 0% 0% round 999px 999px 12px 12px)';
@@ -1807,11 +1941,33 @@
       const viewport = document.getElementById('workspaceViewport');
       const artboard = document.getElementById('posterArtboard');
       const mask = document.getElementById('mapMaskContainer');
+      const sheet = document.getElementById('studioDrawerSheet');
       if (!viewport || !artboard || !mask) return;
 
-      const isMobile = window.innerWidth < 640;
-      const availW = Math.max(240, viewport.clientWidth - (isMobile ? 28 : 110));
-      const availH = Math.max(240, viewport.clientHeight - (isMobile ? 140 : 140));
+      const isMobile = window.innerWidth < 768;
+      const isPanelOpen = Boolean(state.openPanelId);
+
+      let padTop = isMobile ? 64 : 76;
+      let padBottom = isMobile ? 76 : 92;
+      let padLeft = isMobile ? 16 : 36;
+      let padRight = isMobile ? 16 : 36;
+
+      if (isPanelOpen) {
+        if (isMobile && sheet) {
+          const sheetH = sheet.offsetHeight || Math.round(window.innerHeight * 0.44);
+          padBottom = sheetH + 74;
+        } else if (!isMobile) {
+          padLeft = 396;
+        }
+      }
+
+      viewport.style.paddingTop = `${padTop}px`;
+      viewport.style.paddingBottom = `${padBottom}px`;
+      viewport.style.paddingLeft = `${padLeft}px`;
+      viewport.style.paddingRight = `${padRight}px`;
+
+      const availW = Math.max(150, window.innerWidth - padLeft - padRight - (isMobile ? 8 : 24));
+      const availH = Math.max(150, window.innerHeight - padTop - padBottom - (isMobile ? 8 : 24));
 
       const targetW = state.frame.widthPx;
       const targetH = state.frame.heightPx;
@@ -1858,7 +2014,7 @@
         } else {
           fltTitleBox.classList.remove('hidden');
           fltTitleBox.style.backgroundColor = hexToRgba(state.frame.paperBg, 0.92);
-          const s = (state.typography.titleScale || 1) * Math.max(0.72, fitScale);
+          const s = (state.typography.titleScale || 1) * Math.max(0.56, fitScale);
           if (fltTitleBox.style.left === '50%') {
             fltTitleBox.style.transform = `translateX(-50%) scale(${s})`;
           } else {
@@ -1977,7 +2133,7 @@
       }
 
       box.classList.remove('hidden');
-      const effScale = (state.typography.legendScale || 1) * Math.max(0.75, fitScale);
+      const effScale = (state.typography.legendScale || 1) * Math.max(0.58, fitScale);
       box.style.transform = `scale(${effScale})`;
       box.style.width = `${state.typography.legendWidthPx}px`;
       box.style.backgroundColor = `rgba(255, 255, 255, ${state.typography.legendBgOpacity})`;
@@ -2383,6 +2539,18 @@
       );
     }
 
+    function syncNavigationButtonStates() {
+      const panelId = state.openPanelId;
+      ['view', 'style', 'layers', 'frame', 'text', 'draw'].forEach(id => {
+        const btn = document.getElementById(`dockBtn-${id}`);
+        if (btn) {
+          btn.className = id === panelId
+            ? 'flex-1 md:flex-initial px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-bold bg-slate-900 text-white shadow-sm transition-all cursor-pointer'
+            : 'flex-1 md:flex-initial px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-[10px] sm:text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all cursor-pointer';
+        }
+      });
+    }
+
     function togglePanel(panelId) {
       if (state.openPanelId === panelId) {
         closePanel();
@@ -2393,37 +2561,28 @@
 
     function openPanel(panelId) {
       state.openPanelId = panelId;
-      const card = document.getElementById('floatingPanelCard');
-      card.classList.remove('hidden');
-
-      ['view', 'style', 'layers', 'frame', 'text', 'draw'].forEach(id => {
-        const btn = document.getElementById(`dockBtn-${id}`);
-        if (btn) {
-          btn.className = id === panelId
-            ? 'px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs font-bold bg-slate-900 text-white shadow-xs transition-all whitespace-nowrap cursor-pointer'
-            : 'px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all whitespace-nowrap cursor-pointer';
-        }
-      });
-
+      const sheet = document.getElementById('studioDrawerSheet');
+      sheet.classList.remove('hidden');
+      syncNavigationButtonStates();
       renderActivePanelContent();
+      requestAnimationFrame(() => updatePosterArtboard());
     }
 
     function closePanel() {
       state.openPanelId = null;
-      document.getElementById('floatingPanelCard').classList.add('hidden');
-      ['view', 'style', 'layers', 'frame', 'text', 'draw'].forEach(id => {
-        const btn = document.getElementById(`dockBtn-${id}`);
-        if (btn) {
-          btn.className = 'px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all whitespace-nowrap cursor-pointer';
-        }
-      });
+      state.mobileSheetExpanded = false;
+      const sheet = document.getElementById('studioDrawerSheet');
+      sheet.classList.add('hidden');
+      syncNavigationButtonStates();
+      requestAnimationFrame(() => updatePosterArtboard());
     }
 
     function handleWorkspaceBackgroundClick(e) {
       if (e.target.id === 'workspaceViewport') {
-        closePanel();
         document.querySelectorAll('.draggable-overlay').forEach(el => el.classList.remove('selected-overlay'));
-        document.getElementById('featureInspectorPill').classList.add('hidden');
+        if (window.innerWidth < 768 && state.openPanelId) {
+          closePanel();
+        }
       }
     }
 
@@ -2431,8 +2590,8 @@
       const id = state.openPanelId;
       if (!id) return;
       const meta = {
-        view: { title: 'Map View & Perspective', icon: 'ph-globe-hemisphere-west' },
-        style: { title: 'Colors & Palette', icon: 'ph-palette' },
+        view: { title: 'Map View & Camera', icon: 'ph-globe-hemisphere-west' },
+        style: { title: 'Colors & Themes', icon: 'ph-palette' },
         layers: { title: 'Map Elements', icon: 'ph-stack' },
         frame: { title: 'Frame, Shape & Size', icon: 'ph-frame-corners' },
         text: { title: 'Google Fonts, Title & Key', icon: 'ph-text-aa' },
@@ -2440,21 +2599,23 @@
       }[id];
 
       document.getElementById('panelHeaderTitle').textContent = meta.title;
-      document.getElementById('panelHeaderIcon').className = `ph ${meta.icon} text-base text-slate-800`;
+      document.getElementById('panelHeaderIcon').className = `ph ${meta.icon} text-base text-slate-900`;
 
       const body = document.getElementById('panelBodyContent');
       if (id === 'view') body.innerHTML = buildViewPanelHtml();
       else if (id === 'style') body.innerHTML = buildStylePanelHtml();
       else if (id === 'layers') body.innerHTML = buildLayersPanelHtml();
       else if (id === 'frame') body.innerHTML = buildFramePanelHtml();
-      else if (id === 'text') body.innerHTML = buildTextAndKeyPanelHtml();
-      else if (id === 'draw') body.innerHTML = buildDrawPanelHtml();
+      else if (id === 'text') {
+        body.innerHTML = buildTextAndKeyPanelHtml();
+        setupFontPreviewObserver();
+      } else if (id === 'draw') body.innerHTML = buildDrawPanelHtml();
     }
 
     function buildViewPanelHtml() {
       const V = state.view;
       const modes = [
-        { id: 'vector', label: 'Vector Map', icon: 'ph-bezier-curve' },
+        { id: 'vector', label: 'Vector Studio', icon: 'ph-bezier-curve' },
         { id: 'satellite', label: 'Satellite', icon: 'ph-planet' },
         { id: 'hybrid', label: 'Hybrid Roads', icon: 'ph-stack' },
         { id: 'terrain', label: 'Topo Relief', icon: 'ph-mountains' }
@@ -2463,7 +2624,7 @@
       return `
         <div class="grid grid-cols-2 gap-2">
           ${modes.map(m => `
-            <button onclick="setMapViewMode('${m.id}')" class="p-2.5 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${V.mode === m.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50/80 border-slate-200 text-slate-800 hover:bg-slate-100'}">
+            <button onclick="setMapViewMode('${m.id}')" class="p-2.5 rounded-2xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${V.mode === m.id ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'}">
               <i class="ph ${m.icon} text-lg"></i>
               <span class="text-xs font-semibold">${m.label}</span>
             </button>
@@ -2542,7 +2703,7 @@
         <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-slate-800">Custom Color Swatches</span>
-            <button onclick="remixCustomColors()" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 flex items-center gap-1 cursor-pointer">
+            <button onclick="remixCustomColors()" class="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 flex items-center gap-1 cursor-pointer">
               <i class="ph ph-shuffle"></i>
               <span>Surprise Me</span>
             </button>
@@ -2579,7 +2740,7 @@
           <div class="text-xs font-bold text-slate-600">Curated Palettes</div>
           <div class="grid grid-cols-2 gap-2">
             ${Object.entries(COLOR_THEMES).map(([k, t]) => `
-              <button onclick="applyColorTheme('${k}')" class="p-2.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${state.activeTheme === k ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'}">
+              <button onclick="applyColorTheme('${k}')" class="p-2.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${state.activeTheme === k ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'}">
                 <span class="text-xs font-semibold truncate">${t.name}</span>
                 <div class="flex items-center -space-x-1 shrink-0">
                   <span class="w-3.5 h-3.5 rounded-full border border-white" style="background:${t.land}"></span>
@@ -2598,10 +2759,10 @@
       const keys = ['highways', 'secondaryRoads', 'streets', 'railways', 'paths', 'water', 'parks', 'buildings', 'borders', 'placeLabels', 'streetLabels', 'pois'];
       return `
         <div class="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 text-xs">
-          <span class="text-slate-600 font-medium">Quick Presets</span>
+          <span class="text-slate-600 font-medium">Quick Filter</span>
           <div class="flex gap-1.5">
-            <button onclick="setAllLayers(true)" class="px-2 py-0.5 rounded-lg bg-white border border-slate-200 font-semibold text-slate-700 cursor-pointer">Show All</button>
-            <button onclick="filterOnlyRoads()" class="px-2 py-0.5 rounded-lg bg-white border border-slate-200 font-semibold text-slate-700 cursor-pointer">Roads Only</button>
+            <button onclick="setAllLayers(true)" class="px-2 py-0.5 rounded-lg bg-white border border-slate-200 font-semibold text-slate-700 cursor-pointer">All</button>
+            <button onclick="filterOnlyRoads()" class="px-2 py-0.5 rounded-lg bg-white border border-slate-200 font-semibold text-slate-700 cursor-pointer">Roads</button>
             <button onclick="filterOnlyTransit()" class="px-2 py-0.5 rounded-lg bg-white border border-slate-200 font-semibold text-slate-700 cursor-pointer">Transit</button>
           </div>
         </div>
@@ -2694,16 +2855,11 @@
       ];
 
       return `
-        <div class="p-2.5 rounded-xl bg-blue-50/80 border border-blue-200/70 text-[11px] text-blue-900 flex items-center gap-2">
-          <i class="ph ph-arrows-out text-sm shrink-0"></i>
-          <span>Drag any edge or corner of the map frame directly on the canvas to resize manually.</span>
-        </div>
-
         <div class="space-y-2">
           <div class="text-xs font-bold text-slate-700">Frame Shape</div>
           <div class="grid grid-cols-3 gap-1.5">
             ${shapes.map(s => `
-              <button onclick="state.frame.shape='${s.id}'; updatePosterArtboard(); renderActivePanelContent()" class="p-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer ${state.frame.shape === s.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}">
+              <button onclick="state.frame.shape='${s.id}'; updatePosterArtboard(); renderActivePanelContent()" class="p-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer ${state.frame.shape === s.id ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}">
                 <i class="ph ${s.icon}"></i>
                 <span>${s.label}</span>
               </button>
@@ -2721,7 +2877,7 @@
           </div>
           <div class="grid grid-cols-3 gap-1.5">
             ${ASPECT_RATIOS.map(r => `
-              <button onclick="applyAspectRatio('${r.id}', ${r.w}, ${r.h})" class="py-1.5 px-2 rounded-xl border text-xs font-semibold cursor-pointer ${state.frame.ratioId === r.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}">
+              <button onclick="applyAspectRatio('${r.id}', ${r.w}, ${r.h})" class="py-1.5 px-2 rounded-xl border text-xs font-semibold cursor-pointer ${state.frame.ratioId === r.id ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}">
                 ${r.label}
               </button>
             `).join('')}
@@ -2730,7 +2886,7 @@
 
         <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-700">Measurement Unit</span>
+            <span class="text-xs font-semibold text-slate-700">Unit</span>
             <div class="flex bg-white border border-slate-200 rounded-lg p-0.5 text-xs">
               ${['px', 'cm', 'mm', 'in'].map(u => `
                 <button onclick="state.frame.unit='${u}'; updatePosterArtboard(); renderActivePanelContent()" class="px-2 py-0.5 rounded-md font-semibold cursor-pointer ${state.frame.unit === u ? 'bg-slate-900 text-white' : 'text-slate-600'}">${u}</button>
@@ -2761,11 +2917,28 @@
       `;
     }
 
+    function renderFontButtonListHtml(fonts) {
+      return fonts.map(f => {
+        const isSelected = state.typography.fontFamily === f;
+        return `
+          <button
+            type="button"
+            data-font-name="${escapeHtml(f)}"
+            onclick="selectGoogleFont('${f.replace(/'/g, "\\'")}')"
+            class="px-3 py-2 rounded-xl text-left flex items-center justify-between gap-2 cursor-pointer transition-all ${isSelected ? 'bg-slate-900 text-white shadow-xs' : 'bg-white hover:bg-slate-100 text-slate-900 border border-slate-200/80'}"
+          >
+            <span class="text-sm truncate leading-snug" style="font-family: '${escapeHtml(f)}', Georgia, sans-serif;">${escapeHtml(f)}</span>
+            <span class="text-[11px] shrink-0 opacity-65" style="font-family: '${escapeHtml(f)}', Georgia, sans-serif;">${escapeHtml(state.place.title.slice(0, 10))}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
     function buildTextAndKeyPanelHtml() {
       const T = state.typography;
       const keyLayerOrder = ['highways', 'secondaryRoads', 'streets', 'railways', 'paths', 'water', 'parks', 'buildings', 'borders'];
       const q = (state.fontSearchQuery || '').toLowerCase();
-      const filteredFonts = GOOGLE_FONTS_DIRECTORY.filter(f => !q || f.toLowerCase().includes(q)).slice(0, 60);
+      const filteredFonts = GOOGLE_FONTS_DIRECTORY.filter(f => !q || f.toLowerCase().includes(q)).slice(0, 80);
 
       return `
         <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
@@ -2781,19 +2954,15 @@
                 type="text"
                 value="${escapeHtml(state.fontSearchQuery)}"
                 oninput="state.fontSearchQuery=this.value; updateFontResultsList()"
-                placeholder="Search any Google Font..."
+                placeholder="Search & preview any Google Font..."
                 class="w-full text-xs text-slate-900 focus:outline-none"
               />
             </div>
             <button onclick="applyTypedGoogleFont()" class="px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-semibold cursor-pointer shrink-0">Apply</button>
           </div>
 
-          <div id="googleFontsListBox" class="max-h-32 overflow-y-auto thin-scroll grid grid-cols-2 gap-1 pt-0.5">
-            ${filteredFonts.map(f => `
-              <button onclick="selectGoogleFont('${f.replace(/'/g, "\\'")}')" class="px-2.5 py-1.5 rounded-lg text-left text-xs truncate cursor-pointer transition-colors ${T.fontFamily === f ? 'bg-slate-900 text-white font-semibold' : 'bg-white hover:bg-slate-100 text-slate-800 border border-slate-200/70'}">
-                ${escapeHtml(f)}
-              </button>
-            `).join('')}
+          <div id="googleFontsListBox" class="max-h-40 overflow-y-auto thin-scroll grid grid-cols-1 gap-1.5 pt-0.5">
+            ${renderFontButtonListHtml(filteredFonts)}
           </div>
         </div>
 
@@ -2823,7 +2992,7 @@
             </div>
           </div>
 
-          <div class="space-y-1 pt-1 max-h-36 overflow-y-auto thin-scroll">
+          <div class="space-y-1 pt-1 max-h-32 overflow-y-auto thin-scroll">
             ${keyLayerOrder.map(k => {
               const el = state.elements[k];
               return `
@@ -2866,12 +3035,9 @@
       const box = document.getElementById('googleFontsListBox');
       if (!box) return;
       const q = (state.fontSearchQuery || '').toLowerCase();
-      const filteredFonts = GOOGLE_FONTS_DIRECTORY.filter(f => !q || f.toLowerCase().includes(q)).slice(0, 60);
-      box.innerHTML = filteredFonts.map(f => `
-        <button onclick="selectGoogleFont('${f.replace(/'/g, "\\'")}')" class="px-2.5 py-1.5 rounded-lg text-left text-xs truncate cursor-pointer transition-colors ${state.typography.fontFamily === f ? 'bg-slate-900 text-white font-semibold' : 'bg-white hover:bg-slate-100 text-slate-800 border border-slate-200/70'}">
-          ${escapeHtml(f)}
-        </button>
-      `).join('');
+      const filteredFonts = GOOGLE_FONTS_DIRECTORY.filter(f => !q || f.toLowerCase().includes(q)).slice(0, 80);
+      box.innerHTML = renderFontButtonListHtml(filteredFonts);
+      setupFontPreviewObserver();
     }
 
     function buildDrawPanelHtml() {
@@ -3153,13 +3319,16 @@
         finBtn.classList.toggle('hidden', !(tool === 'route' || tool === 'zone'));
         if (map) map.getCanvas().style.cursor = 'crosshair';
         const prompts = {
-          pin: 'Click anywhere on the map to place a draggable Pin',
-          route: 'Click points on the map to draw a route line',
-          zone: 'Click 3+ corners to shade a polygon area',
-          text: 'Click on the map to place a draggable text note',
-          measure: 'Click points on the map to measure distance'
+          pin: 'Tap anywhere on the map to drop a Pin',
+          route: 'Tap points on the map to draw a route line',
+          zone: 'Tap 3+ corners to shade an area',
+          text: 'Tap on the map to place a text note',
+          measure: 'Tap points on the map to measure distance'
         };
         txt.textContent = prompts[tool];
+        if (window.innerWidth < 768 && state.openPanelId) {
+          closePanel();
+        }
       }
       if (state.openPanelId === 'draw') renderActivePanelContent();
     }
@@ -3171,7 +3340,8 @@
         if (hitKey) {
           showFeatureInspectorPill(hitKey);
         } else {
-          document.getElementById('featureInspectorPill').classList.add('hidden');
+          const bar = document.getElementById('featureInspectorPill');
+          if (bar) bar.classList.add('hidden');
         }
         return;
       }
@@ -3634,7 +3804,7 @@
     window.addEventListener('resize', () => updatePosterArtboard());
 
     window.addEventListener('DOMContentLoaded', () => {
-      updatePosterArtboard();
+      syncNavigationButtonStates();
       initMapLibre();
       fetchCompleteGoogleFontsList();
     });
